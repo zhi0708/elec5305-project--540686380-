@@ -1,58 +1,117 @@
-# Detection and Suppression of Short Impulsive Noise in Speech Recordings
+# Sparse Impulsive-Noise Removal: Classical Detection and Repair versus Neural Speech Enhancement
 
-## Background
+**Leona Wang · SID 540686380 · ELEC5305**
 
-Speech recordings are widely used in online meetings, lectures, interviews, voice messages, and video narration. However, recordings are often affected by sudden noises such as desk knocks, mouse clicks, microphone contact, dropped objects, or closing doors.
+> For sparse impulsive interference, should processing also be sparse? We compare transparent event detection and local repair with official pretrained GTCRN, measuring restoration, collateral alteration and computation separately.
 
-Although these noises are usually short, they can have much larger amplitudes than normal speech and may briefly mask important spoken information. They can also sound particularly distracting when the recording is played through headphones.
+## Start here
 
-## The Problem
+Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis. Supporting modules and generated measurements are organised below; the notebook is the main entry point.
 
-Short impulsive noise is different from continuous background noise such as fan or air-conditioning noise.
+## Experiment
 
-Continuous noise normally has relatively stable characteristics, while impulsive noise:
+- Controlled generator: clean reference, two synthetic and three ESC-50 event templates, exact insertion intervals and masks.
+- Energy-only baseline and STFT energy/flux/bandwidth detector; thresholds chosen only on development clips.
+- Local attenuation/interpolation, official pretrained DNS3 GTCRN, and diagnostic oracle interpolation.
+- 90 development mixtures, 180 held-out mixtures, 20 seconds of clean no-op tests.
+- Five requested result figures, supplementary spectrograms, locally generated listening examples, CSV measurements and technical report.
 
-- appears suddenly;
-- lasts for a short time;
-- may have a high amplitude;
-- may contain energy across a wide frequency range;
-- occurs at unpredictable positions.
+The test samples are variants of **one existing recording**, not independent speakers. Locations are **acoustic proxies**, not aligned phoneme labels. Detector recall remains low; limitations are reported alongside results.
 
-Conventional filters designed for stationary background noise may therefore be ineffective. A simple amplitude threshold may also incorrectly classify loud speech or plosive sounds as noise.
+## Main measured results
 
-## Project Aim
+| Detector | Precision | Recall | F1 | TP / FP / FN | Mean matched onset error (ms) |
+|---|---:|---:|---:|---|---:|
+| ENERGY | 0.047 | 0.289 | 0.080 | 52 / 1062 / 128 | 3.77 |
+| STFT | 0.521 | 0.278 | 0.362 | 50 / 46 / 130 | 2.76 |
 
-This project aims to develop a Python audio signal processing program that can detect and suppress short impulsive noise in speech recordings while preserving the quality and intelligibility of the original speech.
 
-A time-domain energy-threshold method will first be developed as a baseline. Time-frequency features will then be introduced to improve detection and reduce incorrect classifications.
+| Method | Event RMSE | Clean-region RMSE | Event error reduction (dB) | SI-SDR (dB) | STOI | Median RTF |
+|---|---:|---:|---:|---:|---:|---:|
+| Unprocessed | 0.016776 | 0.000000 | 0.00 | 32.95 | 0.971 | 0.00000 |
+| Energy + interpolation | 0.013971 | 0.004933 | 1.25 | 12.13 | 0.877 | 0.00030 |
+| STFT + attenuation | 0.014943 | 0.000026 | 0.97 | 33.77 | 0.972 | 0.00183 |
+| STFT + interpolation | 0.014994 | 0.000062 | 1.15 | 33.64 | 0.974 | 0.00183 |
+| GTCRN (DNS3 pretrained) | 0.006374 | 0.002243 | 5.87 | 17.89 | 0.899 | 0.01649 |
 
-## Research Question
 
-> Can time-frequency features improve the detection and suppression of short impulsive noise compared with a time-domain energy-threshold method?
+GTCRN restores the event region more strongly; the conservative STFT local methods preserve the surrounding reference better. Neither result establishes that DSP or neural enhancement is universally superior. See the [full report](report/final_report.md), [revised proposal](report/revised_proposal.md) and [case-level results](results/).
 
-## Proposed Approach
+![Event restoration versus clean-region alteration](docs/assets/figures/02_tradeoff.png)
 
-The project will gradually investigate the following processing stages:
+## Reproduce (Python 3.12 recommended)
 
-1. Load and preprocess a speech recording.
-2. Divide the audio into short frames.
-3. Calculate short-time energy.
-4. analyse the signal using the Fast Fourier Transform (FFT) and Short-Time Fourier Transform (STFT).
-5. Extract temporal and spectral features.
-6. Detect frames containing impulsive noise.
-7. Suppress detected noise using local attenuation or interpolation.
-8. Reconstruct and evaluate the processed audio.
+```bash
+git clone https://github.com/zhi0708/elec5305-project--540686380-.git
+cd elec5305-project--540686380-
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python scripts/prepare_data.py
+python -m pytest -q
+python scripts/run_experiment.py
+python scripts/build_deliverables.py
+```
 
-## Experimental Design
+On Windows, activate with `.venv\Scripts\activate`. No GPU is needed. Preparation downloads only three ESC-50 recordings and the official GTCRN repository/checkpoint. It checks the event hashes and pins GTCRN commit `502ebfab64da7c4a9af78dcb9c6ceef1ebb01c73`. Data downloads require an internet connection. Measurements exclude first-call model warm-up and loading. The tested software/hardware and checkpoint hash are in [summary.json](results/summary.json). Hardware-specific RTFs may change on your machine; deterministic signal metrics should agree within normal numerical tolerance.
 
-Clean speech recordings will be obtained from the Open Speech Repository. Short impulsive noises will initially be generated and inserted into the speech at known time positions.
+## Process your own recording
 
-This produces three signals:
+```bash
+python scripts/enhance.py input.wav output.wav --method stft --repair interpolate
+python scripts/enhance.py input.wav output_gtcrn.wav --method gtcrn
+```
 
-- the original clean speech;
-- speech containing impulsive noise;
-- the processed speech.
+Local output also includes a JSON file of predicted sample intervals. Ground truth is not used. Thresholds are specific to this experiment and are not a validated general-purpose setting.
 
-Because the original speech and noise positions are known, the detection and suppression results can be evaluated objectively.
+## Export a reproducible controlled input
 
-Later experiments may also use real impulsive sounds from public environmental audio datasets.
+```bash
+python scripts/export_case.py clip3_synthetic_20ms_steady_voiced_+6dB
+```
+
+This writes clean.wav, noise.wav, noisy.wav, event_mask.npy and metadata.json. All 270 case IDs/intervals are listed in [case_manifest.json](results/case_manifest.json). A full run also generates three compact NPZ examples with exact floating-point signals and true masks; these derived binary files are not committed. The website examples use a separate fixed-amplitude experiment: precisely the same event samples are moved among three locations.
+
+## Website and submission
+
+- Main notebook: [notebooks/impulsive_noise_project.ipynb](notebooks/impulsive_noise_project.ipynb). Use the same file across updates.
+- Listening examples and a short demonstration video are available on the project website.
+- Website source: [docs/index.html](docs/index.html). Preview locally: `python -m http.server 8000 --directory docs`.
+- Intended public URL: https://zhi0708.github.io/elec5305-project--540686380-/
+- [GitHub Actions workflow](.github/workflows/pages.yml) publishes `docs/` after an authorised push to main. In Settings → Pages, select **GitHub Actions** if needed. A deployment is only live after the workflow succeeds; verify the public URL before submitting.
+- [Brief submission text](report/brief_submission.txt) is intended for use after the website is deployed.
+- Existing `audio_exploration` is retained as the original initial experiment.
+
+## Files
+
+| Path | Purpose |
+|---|---|
+| notebooks/impulsive_noise_project.ipynb | Main experiment walkthrough, controls, recorded results and interpretation |
+| src/dsp.py | Transparent features, detectors, exact support masks, local repair, metrics |
+| src/neural.py | Official model adapter with modern complex STFT handling |
+| scripts/prepare_data.py | Reproducible dataset/model setup |
+| scripts/run_experiment.py | Frozen-threshold experiment and no-op controls |
+| scripts/make_figures.py | Five measured result figures and supplementary spectrograms |
+| results/ | Manifest, threshold search, per-case and grouped measurements, example arrays |
+| report/ | English report, revised 700-1000 word proposal and submission description |
+| docs/ | Static website, figures, audio examples and demonstration |
+| tests/ | Ground-truth integrity, preservation and one-to-one scoring tests |
+
+## Data provenance and attribution
+
+Speech is `OSR_us_000_0010_8k.wav` from the [Open Speech Repository](https://www.voiptroubleshooter.com/open_speech/american.html). The inherited file is byte-identical to a public mirror of that file; its SHA-256 and verification details are in [data/speech_manifest.json](data/speech_manifest.json). OSR permits copying, modification and website incorporation with source attribution. It is a controlled reference, not certified noise-free speech. ESC-50 is CC BY-NC 3.0 as a dataset; individual records and attribution appear in [data/esc50/LICENSE.txt](data/esc50/LICENSE.txt) and [manifest.json](data/esc50/manifest.json). Used originals: Robinhood76 (door knock, CC BY-NC), MegaPenguin13 (trackpad click, CC0), Anton (typing, CC BY). Raw downloaded events and GTCRN files are excluded from git and fetched by setup; no licence is asserted over third-party materials.
+
+## Academic and technical references
+
+1. S. V. Vaseghi and P. J. W. Rayner, "Detection and suppression of impulsive noise in speech communication systems," IEE Proceedings I, vol. 137, no. 1, pp. 38-46, 1990.
+2. R. C. Nongpiur and D. J. Shpak, "Impulse-noise suppression in speech using the stationary wavelet transform," JASA, vol. 133, no. 2, pp. 866-879, 2013. https://doi.org/10.1121/1.4773264
+3. C. Medina, R. Coelho and L. Zao, "Impulsive noise detection for speech enhancement in HHT domain," IEEE/ACM TASLP, vol. 29, pp. 2244-2253, 2021. https://doi.org/10.1109/TASLP.2021.3086131
+4. X. Rong, T. Sun, X. Zhang, Y. Hu, C. Zhu and J. Lu, "GTCRN: A Speech Enhancement Model Requiring Ultralow Computational Resources," ICASSP 2024. https://doi.org/10.1109/ICASSP48485.2024.10448310. Official implementation: https://github.com/Xiaobin-Rong/gtcrn
+5. L. Zhou, H. Liu, L. Gan, Y. Zhou, M. Niedzwiecki and T.-K. Truong, "A novel sparse adaptive filter for suppressing impulsive disturbance in audio signals," Signal Processing, vol. 241, article 110390, April 2026. https://doi.org/10.1016/j.sigpro.2025.110390. Author code/data: https://github.com/minikatty/Lq_JSLMP
+6. K. J. Piczak, "ESC: Dataset for Environmental Sound Classification," ACM Multimedia, 2015. Dataset and attribution: https://github.com/karolpiczak/ESC-50
+7. C. H. Taal et al., "An Algorithm for Intelligibility Prediction of Time-Frequency Weighted Noisy Speech," IEEE TASLP, 2011. STOI implementation: https://github.com/mpariente/pystoi
+
+
+## Acknowledgement
+
+AI assistance was used for implementation and documentation. The displayed results come from executing the supplied code; pretrained model performance is measured here rather than copied from its authors' benchmark.

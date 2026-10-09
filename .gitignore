@@ -1,0 +1,19 @@
+__pycache__/
+.pytest_cache/
+.venv/
+third_party/
+data/esc50/*.wav
+data/cases/
+data/demo_work/
+*.zip
+
+# Regenerable binary examples and local document copies.
+results/*.npz
+docs/*.pdf
+docs/assets/audio/*/energy_interpolate.wav
+docs/assets/audio/*/stft_attenuate.wav
+docs/assets/audio/*/oracle_interpolate.wav
+report/*_zh.md
+report/brief_submission.txt
+
+# Listening exports are generated locally from attributed public data.

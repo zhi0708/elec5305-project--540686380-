@@ -1,0 +1,35 @@
+[
+  {
+    "filename": "1-101336-A-30.wav",
+    "fold": "1",
+    "target": "30",
+    "category": "door_wood_knock",
+    "esc10": "False",
+    "src_file": "101336",
+    "take": "A",
+    "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/master/audio/1-101336-A-30.wav",
+    "sha256": "e738266e395e378102f74e0920b05ff5937543788420d5b2a6b8d3df8bdb3910"
+  },
+  {
+    "filename": "1-118206-A-31.wav",
+    "fold": "1",
+    "target": "31",
+    "category": "mouse_click",
+    "esc10": "False",
+    "src_file": "118206",
+    "take": "A",
+    "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/master/audio/1-118206-A-31.wav",
+    "sha256": "4461fa26f119749f99a4762be421d0d64e774960be7eef9780812d48580e48fb"
+  },
+  {
+    "filename": "1-137-A-32.wav",
+    "fold": "1",
+    "target": "32",
+    "category": "keyboard_typing",
+    "esc10": "False",
+    "src_file": "137",
+    "take": "A",
+    "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/master/audio/1-137-A-32.wav",
+    "sha256": "d68e4716f74f073be8f78f5fe8e45daf7c09b0ec0575b21f57989d803536abb3"
+  }
+]

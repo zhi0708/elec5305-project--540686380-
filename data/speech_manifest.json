@@ -1,0 +1,14 @@
+{
+  "local_file": "audio/clean_speech.wav",
+  "source_name": "Open Speech Repository",
+  "source_filename": "OSR_us_000_0010_8k.wav",
+  "source_page": "https://www.voiptroubleshooter.com/open_speech/american.html",
+  "source_url": "https://www.voiptroubleshooter.com/open_speech/american/OSR_us_000_0010_8k.wav",
+  "verified_mirror": "https://raw.githubusercontent.com/hrtlacek/td_mfcc/master/OSR_us_000_0010_8k.wav",
+  "sha256": "a4bf9becd046d7aedb6d05b6e12347a6294a44f74d263089c636fb0a2b1e6561",
+  "verification": "The inherited file is byte-identical to the named public mirror. The official OSR index lists this filename as 8 kHz, 16-bit PCM Harvard sentences.",
+  "original_sample_rate": 8000,
+  "conditions_of_use": "OSR permits copying, modification and website incorporation for reasonable applications, with source acknowledgement as Open Speech Repository.",
+  "conditions_url": "https://www.voiptroubleshooter.com/open_speech/american.html",
+  "reference_caveat": "The recording is used as a controlled reference, not certified noise-free speech."
+}
