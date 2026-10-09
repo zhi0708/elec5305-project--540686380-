@@ -79,7 +79,6 @@ This writes clean.wav, noise.wav, noisy.wav, event_mask.npy and metadata.json. A
 - Website source: [docs/index.html](docs/index.html). Preview locally: `python -m http.server 8000 --directory docs`.
 - Intended public URL: https://zhi0708.github.io/elec5305-project--540686380-/
 - [GitHub Actions workflow](.github/workflows/pages.yml) publishes `docs/` after an authorised push to main. In Settings → Pages, select **GitHub Actions** if needed. A deployment is only live after the workflow succeeds; verify the public URL before submitting.
-- [Brief submission text](report/brief_submission.txt) is intended for use after the website is deployed.
 - Existing `audio_exploration` is retained as the original initial experiment.
 
 ## Files
