@@ -136,8 +136,8 @@ This writes clean.wav, noise.wav, noisy.wav, event_mask.npy and metadata.json. A
 | scripts/run_experiment.py | Frozen-threshold experiment and no-op controls |
 | scripts/make_figures.py | Five measured result figures and supplementary spectrograms |
 | results/ | Manifest, threshold search, per-case and grouped measurements, example arrays |
-| report/ | English report, revised 700-1000 word proposal and submission description |
-| docs/ | Static website, figures, audio examples and demonstration |
+| report/ | Final research report and revised proposal |
+| docs/ | Project website, final report, figures and audio examples |
 | tests/ | Ground-truth integrity, preservation and one-to-one scoring tests |
 
 ## Data provenance and attribution
@@ -160,4 +160,4 @@ L2-ARCTIC: [corpus and annotation documentation](https://psi.engr.tamu.edu/l2-ar
 
 ## Acknowledgement
 
-AI assistance was used for implementation and documentation. The displayed results come from executing the supplied code; pretrained model performance is measured here rather than copied from its authors' benchmark.
+See the [final report](report/final_report.md#9-reproduction-and-implementation-acknowledgement) for the implementation acknowledgement.
