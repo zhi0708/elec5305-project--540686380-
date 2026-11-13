@@ -25,3 +25,5 @@ results/extended_restoration.csv
 results/extended_phone_cases.csv
 results/extended_phone_clean.csv
 results/extended_clean.csv
+
+/demo_output/

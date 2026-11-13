@@ -52,6 +52,32 @@ GTCRN restores the event region more strongly; the conservative STFT local metho
 
 ![Event restoration versus clean-region alteration](docs/assets/figures/02_tradeoff.png)
 
+## Quick demo
+
+From the repository root, prepare the Python environment and model once:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python scripts/prepare_data.py
+```
+
+Run both methods on the included mouse-click example:
+
+```bash
+python scripts/demo.py
+```
+
+Open `demo_output/index.html` in your browser to play the noisy input, local DSP repair and GTCRN output on one page. The detected intervals are printed in seconds and saved to `demo_output/local.events.json` as sample indices. The example click occurs around 2.64 seconds. The demo uses the included audio and the prepared checkpoint.
+
+To process a different WAV, or to run again into a fresh folder:
+
+```bash
+python scripts/demo.py my_recording.wav --output-dir my_comparison
+python scripts/demo.py --output-dir recording_take
+```
+
 ## Reproduce (Python 3.12 recommended)
 
 ```bash
