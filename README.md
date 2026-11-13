@@ -6,7 +6,7 @@
 
 ## Start here
 
-Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis. Supporting modules and generated measurements are organised below; the notebook is the main entry point.
+Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis and watch the [code demonstration](https://zhi0708.github.io/elec5305-project--540686380-/assets/demo.mp4). Supporting modules and generated measurements are organised below; the notebook is the main entry point.
 
 ## Experiment
 

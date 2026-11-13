@@ -1,5 +1,5 @@
 """Typeset the measured report and revised proposal; no new measurements."""
-import argparse,html,io,re,shutil
+import argparse,html,re,shutil
 from pathlib import Path
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
@@ -14,6 +14,7 @@ pdfmetrics.registerFontFamily("ProjectSans", normal="ProjectSans", bold="Project
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableStyle,Image,PageBreak,KeepTogether
+from reportlab.platypus.tableofcontents import TableOfContents
 ROOT=Path(__file__).resolve().parents[1]
 WIDTH,HEIGHT=A4
 styles=getSampleStyleSheet()
@@ -32,12 +33,47 @@ styles.add(ParagraphStyle(name='ReportCaption',fontName='ProjectSans',fontSize=9
 
 def text(value):
     value=value.replace('−','-').replace('–','-').replace('—','-')
-    value=html.escape(value)
+    pieces = re.split(r'(\[[^\]]+\]\(https://[^)]+\))', value)
+    for i, piece in enumerate(pieces):
+        match = re.fullmatch(r'\[([^\]]+)\]\((https://[^)]+)\)', piece)
+        if match:
+            label, url = match.groups()
+            pieces[i] = f'<link href="{html.escape(url, quote=True)}" color="#197b80"><u>{html.escape(label)}</u></link>'
+        else:
+            pieces[i] = html.escape(piece)
+    value = ''.join(pieces)
     value=re.sub(r'\*\*(.*?)\*\*',r'<b>\1</b>',value)
     return value
 
 
-def markdown_elements(source):
+FIGURES = {
+    '01_detection.png': ('Figure 1. Detection by strength and acoustic location',
+                         'Original benchmark. Precision, recall and F1 by location and level.'),
+    '02_tradeoff.png': ('Figure 2. Restoration versus alteration outside the event',
+                        'Original benchmark. Lower error on both axes is desirable. True-mask interpolation is diagnostic.'),
+    '06_extended_miss.png': ('Figure 3. Matched weak and strong keyboard insertions',
+                             'Same held-out recording and insertion interval. Only the stronger event crosses the frozen threshold.'),
+}
+
+
+def figure(name):
+    path = ROOT/'docs/assets/figures'/name
+    title, caption = FIGURES[name]
+    artwork = Image(str(path))
+    scale = min((WIDTH-90)/artwork.imageWidth, 265/artwork.imageHeight)
+    artwork.drawWidth = artwork.imageWidth*scale
+    artwork.drawHeight = artwork.imageHeight*scale
+    return KeepTogether([Paragraph(title, styles['ReportH2']), artwork,
+                         Paragraph(caption, styles['ReportCaption'])])
+
+
+class ReportDocument(SimpleDocTemplate):
+    def afterFlowable(self, flowable):
+        if isinstance(flowable, Paragraph) and flowable.style.name == 'ReportH1':
+            self.notify('TOCEntry', (0, flowable.getPlainText(), self.page))
+
+
+def markdown_elements(source, with_contents=False):
     lines=source.splitlines();items=[];i=0
     while i<len(lines):
         line=lines[i].strip()
@@ -58,13 +94,20 @@ def markdown_elements(source):
                                   ('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),6),
                                   ('BOTTOMPADDING',(0,0),(-1,-1),6)]))
             items.extend([t,Spacer(1,10)]);continue
-        if line.startswith('# '):items.append(Paragraph(text(line[2:]),styles['ReportTitle']))
+        if line.startswith('!['):
+            items.append(figure(Path(line.rsplit('](', 1)[1].removesuffix(')')).name))
+        elif line == '## 1. Research question and motivation' and with_contents:
+            contents = TableOfContents()
+            contents.levelStyles = [styles['ReportBody']]
+            items.extend([Paragraph('Contents', styles['ReportH2']), contents, PageBreak(),
+                          Paragraph(text(line[3:]), styles['ReportH1'])])
+        elif line.startswith('# '):items.append(Paragraph(text(line[2:]),styles['ReportTitle']))
         elif line.startswith('## '):items.append(Paragraph(text(line[3:]),styles['ReportH1']))
         elif line.startswith('### '):items.append(Paragraph(text(line[4:]),styles['ReportH2']))
         elif re.match(r'^\d+\. ',line):items.append(Paragraph(text(line),styles['ReportBody']))
         else:
             paragraph=[line];i+=1
-            while i<len(lines) and lines[i].strip() and not lines[i].startswith(('#','|')) and not re.match(r'^\d+\. ',lines[i]):
+            while i<len(lines) and lines[i].strip() and not lines[i].startswith(('#','|','![')) and not re.match(r'^\d+\. ',lines[i]):
                 paragraph.append(lines[i].strip());i+=1
             items.append(Paragraph(text(' '.join(paragraph)),styles['ReportBody']));continue
         i+=1
@@ -79,37 +122,16 @@ def footer(canvas,doc):
 
 
 def main():
-    from PIL import Image as PILImage
     parser = argparse.ArgumentParser()
     parser.add_argument('report', nargs='?', choices=['final_report', 'revised_proposal'])
     chosen = parser.parse_args().report
     for basename in ([chosen] if chosen else ['final_report', 'revised_proposal']):
         source=(ROOT/'report'/f'{basename}.md').read_text()
-        elements=markdown_elements(source)
-        if basename=='final_report':
-            for name,title,caption in [
-                ('01_detection.png','Figure 1. Detection by strength and acoustic location','Held-out event metrics; all event templates pooled within each overlap/strength condition.'),
-                ('02_tradeoff.png','Figure 2. Event restoration versus collateral alteration','Lower error on both axes is desirable. True-mask interpolation is diagnostic only.'),
-                ('03_overlap_waveforms.png','Figure 3. Identical event at different locations','A fixed 20 ms event waveform and absolute amplitude are used for all three insertions.'),
-                ('04_clean_false_positive.png','Figure 4. False detection on clean reference speech','The high normalised flux peak triggers an event despite low absolute energy. No phoneme label is available.'),
-                ('05_quality_runtime.png','Figure 5. Restoration quality and CPU runtime','Processing is timed on the same CPU. Model loading and warm-up are excluded; no causal latency is inferred.'),
-                ('06_extended_miss.png','Figure 6. Matched weak and strong keyboard insertions','Same unseen recording, event template and insertion interval. The score crosses the threshold for the stronger event only.')]:
-                path=ROOT/'docs/assets/figures'/name
-                with PILImage.open(path) as artwork:
-                    artwork = artwork.convert('RGB')
-                    artwork.thumbnail((1400, 1400))
-                    iw, ih = artwork.size
-                    encoded = io.BytesIO()
-                    artwork.save(encoded, format='JPEG', quality=86, optimize=True)
-                    encoded.seek(0)
-                scale=min((WIDTH-90)/iw,(HEIGHT-160)/ih)
-                elements.extend([PageBreak(),Paragraph(title,styles['ReportH1']),
-                                 Image(encoded,width=iw*scale,height=ih*scale),
-                                 Paragraph(caption,styles['ReportCaption'])])
+        elements=markdown_elements(source, with_contents=basename=='final_report')
         output=ROOT/'report'/f'{basename}.pdf'
-        doc=SimpleDocTemplate(str(output),pagesize=A4,rightMargin=45,leftMargin=45,topMargin=45,
-                              bottomMargin=48,title=source.splitlines()[0][2:],author='Leona Wang')
-        doc.build(elements,onFirstPage=footer,onLaterPages=footer)
+        doc=ReportDocument(str(output),pagesize=A4,rightMargin=45,leftMargin=45,topMargin=45,
+                           bottomMargin=48,title=source.splitlines()[0][2:],author='Leona Wang')
+        doc.multiBuild(elements,onFirstPage=footer,onLaterPages=footer)
         shutil.copyfile(output,ROOT/'docs'/output.name)
         print(output)
 

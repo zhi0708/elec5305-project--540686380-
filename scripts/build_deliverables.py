@@ -57,9 +57,9 @@ def main():
 
 Leona Wang | SID 540686380 | GitHub: zhi0708 | ELEC5305
 
-Repository: {REPO}
+[GitHub code repository]({REPO})
 
-Project site: {SITE}
+[GitHub Pages project website]({SITE}) | [Project demonstration video]({SITE}assets/demo.mp4)
 
 ## Abstract
 
@@ -69,9 +69,21 @@ Sparse impulsive interference presents a preservation problem: removing a short 
 
 The research question is: for sparse short-duration impulsive interference in speech, how does event-localised DSP detection and repair compare with a modern pretrained neural speech enhancer in event restoration, speech preservation and computational cost? A secondary question concerns interference overlapping an existing speech transient.
 
-Predictive reconstruction [1], stationary-wavelet suppression [2] and HHT detection [3] provide historical context for specialised impulsive-noise processing. The current project implements neither the wavelet nor HHT algorithms. Recent sparse adaptive filtering [5] motivates examining disturbance sparsity and localisation: its author repository discusses sparse optimisation and the consequences of altering undisturbed samples. It is used as motivation rather than reproduced or claimed as a baseline. GTCRN [4] supplies an accessible lightweight learned comparator with official pretrained weights. The project contribution is the controlled experiment, transparent student-developed detector and separation of event error from collateral alteration.
+## 2. Literature Review
 
-## 2. Data and controlled corruption
+### 2.1 Detecting and repairing sparse interference
+
+Vaseghi and Rayner [1] use speech prediction to expose samples that are difficult to explain from neighbouring speech. Prediction offers a route to reconstruction, but its assumptions are most plausible when the underlying speech changes slowly. Stationary-wavelet suppression [2] uses time-localised multiscale coefficients, while HHT-based detection [3] adapts its time-frequency representation to nonstationary speech. These approaches motivate the use of short-window evidence for locating disturbances. Our STFT features use a common time grid and make individual scores easy to inspect. The fixed grid also couples timing and frequency resolution, and a broadband stop-consonant release can resemble a click in that representation.
+
+Recent sparse adaptive filtering [5] directly addresses impulsive disturbances. It motivates testing whether the duration and location of waveform changes tracks the known disturbance support. Our design separates detection from reconstruction so a false alarm and a poor repair can be diagnosed independently. Linear interpolation is a deliberately simple repair comparator. It assumes that nearby endpoints provide a useful approximation over a short gap.
+
+### 2.2 General neural enhancement and evaluation
+
+GTCRN [4] uses grouped temporal convolution and recurrence to provide a computationally lightweight learned enhancer. Its official DNS3 checkpoint provides an independently developed reference that can be run on the same CPU and mixtures as the DSP methods. It processes the recording frame by frame and can change clean samples as well as corrupted ones. Its general enhancement training does not establish performance on sparse clicks. The comparison therefore uses the clean reference inside and outside the inserted event. STOI [7] estimates whole-recording intelligibility and is reported alongside the interval-specific metrics.
+
+The design draws on three concepts that were central to the implementation: spectral flux measures how a spectrum evolves between adjacent frames, an event mask describes which samples a repair can modify, and RTF measures processing time relative to signal duration. These concepts give different views of the same problem: locating a disturbance, limiting collateral change and measuring computational cost.
+
+## 3. Data and controlled corruption
 
 The existing repository contains one 33.62-second, mono 8 kHz speech recording. It is OSR_us_000_0010_8k.wav from the Open Speech Repository, verified against a byte-identical public mirror. Its source and SHA-256 are recorded in data/speech_manifest.json. It is treated as a controlled reference rather than a certified noise-free corpus. Only the first 30 seconds are used. They form six non-overlapping five-second clips: clips 1-2 are development data and clips 3-6 are test data. The split separates time segments, not speakers. Upsampling to 16 kHz meets GTCRN's input requirements but does not restore missing bandwidth. All speech clips share one fixed scaling that limits the original recording peak to 0.15; mixtures and outputs are never independently normalised.
 
@@ -81,7 +93,7 @@ Each template is added separately at a pause, a steady voiced candidate and a sp
 
 Event levels are -6, 0 and +6 dB. Level means event RMS relative to the RMS of a local speech window extending 50 ms on each side of the inserted interval. In near silence, that reference has a floor at 10% of whole-clip RMS. An insertion mask covers the exact half-open interval [start, end), including its fades. The generator retains clean speech, added event, corrupted speech and the mask. All case intervals are saved in the manifest; scripts/export_case.py materialises any case. Float arrays are used for measurements to avoid clipping or quantisation. The grid contains 2 x 5 x 3 x 3 = 90 development mixtures and 4 x 5 x 3 x 3 = 180 test mixtures. These are controlled variants of a small reference, not 270 independent utterances.
 
-## 3. Detection and local restoration
+## 4. Detection and local restoration
 
 The analysis uses 8 ms windows and 2 ms hops, with a Hann window for spectra and a 256-point real FFT. Short frames favour transient timing; zero padding samples the spectrum more densely but does not increase physical frequency resolution. Short windows improve temporal localisation at the expense of frequency discrimination. Energy describes local intensity, spectral flux captures positive frame-to-frame spectral change, and bandwidth describes spectral spread. Suppression is evaluated separately from speech preservation; LPC reconstruction remains a possible extension.
 
@@ -93,7 +105,7 @@ Candidate frames exceeding the threshold are mapped to sample intervals, includi
 
 Attenuation applies a gain of 0.2 inside the predicted event, with up to 2 ms entry and exit ramps. Interpolation replaces the predicted samples with a straight line connecting the preceding and following samples. At file boundaries, the missing neighbour is zero. Both methods preserve the input exactly outside the predicted mask. This guarantee concerns the predicted interval; false detections can still alter genuinely clean speech. An oracle interpolation control uses the true mask solely to diagnose reconstruction limitations and is excluded from detector performance and runtime comparison.
 
-## 4. Neural comparison and evaluation protocol
+## 5. Neural comparison and evaluation protocol
 
 GTCRN uses the official DNS3 checkpoint, unmodified model architecture and a pinned source commit. No model is trained or fine-tuned. The adapter follows the official 512-sample FFT, 256-sample hop and square-root Hann analysis/synthesis convention. Modern PyTorch complex STFT tensors are converted into the model's real/imaginary input representation and converted back for iSTFT. Output length is explicitly matched to input length. There is no case-specific gain correction, delay fitting or reference-guided enhancement.
 
@@ -103,9 +115,9 @@ Event RMSE compares output with the clean reference inside the true insertion in
 
 Both methods run on the same {s['environment']['cpu']} CPU environment. Neural inference is CPU-only with one PyTorch thread. Model loading and one warm-up call are excluded. Local runtime includes detector computation and repair; neural runtime includes STFT, model and iSTFT. RTF is wall-clock processing time divided by five seconds of audio. It measures offline throughput, not causal latency: local median filtering and recording-wide feature normalisation use future context. No streaming implementation is claimed.
 
-## 5. Measured results
+## 6. Measured results
 
-### 5.1 Detection
+### 6.1 Detection
 
 {dt}
 
@@ -113,9 +125,11 @@ The STFT detector markedly increases precision and overall F1 but does not impro
 
 {overlap}
 
+![Detection by strength and acoustic location](../docs/assets/figures/01_detection.png)
+
 Figure 1 shows precision, recall and F1 against strength separately for these locations. Full grouped values also separate the five event templates. The strongest performance is template-dependent: the short synthetic click and real mouse click are detected more often than the cropped knock and keyboard event. This is consistent with the chosen spectral features favouring abrupt broad-spectrum change, but without an ablation the explanation remains a hypothesis. The transient condition is not uniquely hardest in this small experiment, so the experiment does not establish consonant-overlap conditions as the most difficult category.
 
-### 5.2 Restoration, preservation and computation
+### 6.2 Restoration, preservation and computation
 
 {table}
 
@@ -123,16 +137,35 @@ GTCRN produces the lowest measured mean event RMSE and about {res['gtcrn']['even
 
 The energy baseline has particularly high collateral error because its false events repair many legitimate speech intervals. Locality alone does not guarantee preservation if the detector is wrong. STFT attenuation and interpolation yield modest average improvement and a zero median improvement: at least half of cases receive no useful repair. The oracle control yields mean event RMSE {res['oracle_interpolate']['event_rmse_mean']:.6f} and mean event error reduction {res['oracle_interpolate']['event_error_reduction_db_mean']:.2f} dB. Even perfect event location does not guarantee that a straight line reconstructs oscillatory speech. Its event RMSE can remain large on speech overlaps despite exactly zero collateral error.
 
-Figure 2 displays event error against collateral error. Figure 3 uses the same 20 ms synthetic event waveform at the same absolute amplitude in all three locations; it is a separate demonstration from the local-RMS strength sweep. The fixed amplitude is set from the +6 dB steady-voiced example and is not rescaled in silence or at the transient. Waveform and spectrogram panels use identical inputs for all methods. Figure 5 shows the measured runtime trade-off. All measured median RTFs are below one, but this is an offline CPU result. GTCRN parameter tensors occupy {s['model']['parameter_bytes']:,} bytes; the checkpoint is {s['model']['checkpoint_bytes']:,} bytes. The model has {s['model']['parameters']:,} parameters including fixed ERB mappings, of which {s['model']['trainable_parameters']:,} are trainable. These are model-storage figures, not measured process peak memory; DSP stores no learned weights but does use waveform, frame and FFT work buffers.
+![Restoration versus alteration outside the event](../docs/assets/figures/02_tradeoff.png)
 
-### 5.3 Clean-input false alarms and preservation
+Figure 2 displays event error against collateral error. The project website includes a separate waveform and spectrogram demonstration using an identical 20 ms event and fixed absolute amplitude across three locations. Table values describe the local-RMS sweep. All measured median RTFs are below one, but this is an offline CPU result. GTCRN parameter tensors occupy {s['model']['parameter_bytes']:,} bytes; the checkpoint is {s['model']['checkpoint_bytes']:,} bytes. The model has {s['model']['parameters']:,} parameters including fixed ERB mappings, of which {s['model']['trainable_parameters']:,} are trainable. These are model-storage figures, not measured process peak memory; DSP stores no learned weights but does use waveform, frame and FFT work buffers.
+
+### 6.3 Clean-input false alarms and preservation
 
 {cp}
 
-The STFT detector produces one false event over the clean test clips, versus 24 for the energy baseline. Figure 4 shows that STFT false alarm in clip 6: a small waveform change coincides with a sharp normalised spectral-flux peak, rather than an unusually loud pulse. This explains how abrupt spectral evolution can cross the threshold even at low absolute energy. The waveform has not been phoneme-labelled, so the event is described as a legitimate reference-speech change, not identified as /t/ or /k/. The clean no-op test also shows that GTCRN changes almost all samples; the changes are numerically measurable, not evidence that every altered sample sounds worse. Audio examples enable informal inspection, but no formal listening study or perceptual preference claim is made.
+The STFT detector produces one false event over the clean test clips, versus 24 for the energy baseline. The clean false-positive figure on the project website shows the STFT false alarm in clip 6: a small waveform change coincides with a sharp normalised spectral-flux peak, rather than an unusually loud pulse. This explains how abrupt spectral evolution can cross the threshold even at low absolute energy. The waveform has not been phoneme-labelled, so the event is described as a legitimate reference-speech change, not identified as /t/ or /k/. The clean no-op test also shows that GTCRN changes almost all samples; the changes are numerically measurable, not evidence that every altered sample sounds worse. Audio examples enable informal inspection, but no formal listening study or perceptual preference claim is made.
 
 {extension.report_section(extended)}
-## 7. Reproduction and implementation acknowledgement
+
+## 8. Discussion and Conclusion
+
+### 8.1 Why the two pipelines behave differently
+
+On the speaker-disjoint test, GTCRN reduced event error by {extended['restoration']['gtcrn']['event_error_reduction_db_mean']:.2f} dB on average, versus {extended['restoration']['transient_interpolate']['event_error_reduction_db_mean']:.2f} dB for short-context interpolation. Its outside-event RMSE was {extended['restoration']['gtcrn']['clean_rmse_mean']:.6f}, versus {extended['restoration']['transient_interpolate']['clean_rmse_mean']:.6f} for local repair. This pattern also appeared in the original recording. GTCRN estimates an enhanced spectrogram across the file [4], so its modifications extend beyond the inserted support. The local pipeline can only change its predicted intervals, and interpolation has limited ability to reconstruct a voiced waveform. The true-mask diagnostic isolates this reconstruction limit from detection errors. These observations are consistent with the motivation for sparse processing [5] and the stronger signal-model assumptions behind predictive reconstruction [1]. The experiments use different algorithms and data from those papers, so their published scores are not directly comparable.
+
+### 8.2 What the detector change contributed
+
+The original STFT detector had a low-energy false alarm with a high normalised-flux score and often missed weak events. Capping flux limits its influence. Adding contrast against both surrounding flanks tests whether a peak is brief relative to ongoing speech. In the expanded test, the retuned STFT control reached 0.154 event F1 and the short-context detector reached 0.475 under the same development/test protocol. This supports the combined score change beyond a threshold-only adjustment. The experiment does not separate the effect of each score component. The -6 dB keyboard example remained below threshold and the +6 dB detection covered only part of the insertion. This illustrates two routes by which a disturbance can survive local repair. The annotated stops also show that improvements over retuned STFT can coexist with more clean false events than the original conservative STFT setting.
+
+### 8.3 Scope and next experiment
+
+The measured trade-off answers the research question for this benchmark. GTCRN offers stronger event restoration, while the tested local pipeline makes fewer changes to surrounding speech and runs faster on the same CPU. Three held-out speakers and six real recordings support a limited transfer check. Mixtures share utterances and templates. The annotated peak is a release-time proxy and the consonant test measures detection only. Objective waveform and STOI results describe the measured signals. The linked audio demonstrates examples without establishing listener preferences.
+
+A focused next experiment would hold the predicted mask fixed and compare interpolation with prediction-based reconstruction [1] on voiced overlaps. Evaluating each method with both true and predicted masks would distinguish gains in repair from errors in localisation. Testing on additional speakers and event recordings would then check whether the result survives changes in source material.
+
+## 9. Reproduction and implementation acknowledgement
 
 Use the README commands to set up dependencies and reproduce both benchmarks. Run scripts/prepare_extended_data.py and scripts/run_extended_experiment.py for the speaker-disjoint evaluation before rebuilding the deliverables. The run creates manifest intervals, frozen thresholds, per-case detection/restoration results, no-op tests, figures and exact example arrays. scripts/export_case.py exports any controlled input; scripts/enhance.py processes a user-supplied WAV without reference labels. See README for platform-specific environment and website instructions.
 
@@ -151,7 +184,7 @@ AI assistance was used in code implementation and documentation. Reported measur
 
 ## Start here
 
-Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis. Supporting modules and generated measurements are organised below; the notebook is the main entry point.
+Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis and watch the [code demonstration]({SITE}assets/demo.mp4). Supporting modules and generated measurements are organised below; the notebook is the main entry point.
 
 ## Experiment
 
@@ -290,7 +323,7 @@ def build_site(s,table,dt,cp,overlap,extended):
 <style>
 :root{{--ink:#182f3b;--teal:#197b80;--cream:#f8f7f2;--muted:#556774;--line:#dce2e0;--white:#fff}}*{{box-sizing:border-box}}html{{scroll-behavior:smooth}}body{{margin:0;background:var(--cream);color:var(--ink);font:16px/1.65 system-ui,-apple-system,sans-serif}}a{{color:var(--teal)}}.wrap{{max-width:1120px;margin:auto;padding:0 26px}}header{{padding:76px 0 54px;background:var(--ink);color:white}}.eyebrow{{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#a3d6d4}}h1{{font-size:clamp(32px,5vw,54px);line-height:1.14;max-width:980px;margin:18px 0 25px;font-weight:650;letter-spacing:-1.4px}}header p{{max-width:790px;color:#d5e0e3;font-size:19px}}.buttons{{display:flex;gap:12px;flex-wrap:wrap;margin-top:25px}}.buttons a{{padding:10px 17px;border:1px solid #67858f;border-radius:5px;color:white;text-decoration:none;font-size:14px}}nav{{position:sticky;top:0;background:#fffffff2;border-bottom:1px solid var(--line);z-index:5}}nav .wrap{{display:flex;gap:24px;padding-top:13px;padding-bottom:13px;overflow:auto}}nav a{{text-decoration:none;white-space:nowrap;font-size:14px}}section{{padding:45px 0;border-bottom:1px solid var(--line);scroll-margin-top:65px}}h2{{font-size:30px;line-height:1.25;margin:0 0 20px;letter-spacing:-.5px}}h3{{font-size:19px}}p{{max-width:930px}}.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}}.stat,.audio-card{{background:white;border:1px solid var(--line);border-radius:8px;padding:22px}}.stat strong{{display:block;font-size:32px;color:var(--teal);line-height:1.2}}.stat span{{font-size:13px;color:var(--muted)}}.note{{border-left:4px solid var(--teal);padding:15px 20px;background:#eaf2ef;margin:24px 0}}.table-wrap{{overflow:auto;background:white;border:1px solid var(--line);border-radius:6px;margin:24px 0}}table{{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}}th,td{{padding:12px 14px;border-bottom:1px solid var(--line);text-align:right}}th:first-child,td:first-child{{text-align:left}}th{{background:#edf2f0}}figure{{margin:26px 0;background:white;border:1px solid var(--line);border-radius:8px;padding:15px}}figure img{{width:100%;height:auto;display:block}}figcaption{{font-size:14px;color:var(--muted);padding:14px 8px 4px;line-height:1.6}}figcaption strong{{color:var(--ink)}}.audio-card label{{display:block;font-size:13px;color:var(--muted);margin-top:17px}}audio{{width:100%;margin-top:6px}}pre{{background:#172d39;color:#e5f3ef;padding:24px;border-radius:7px;overflow:auto;font-size:13px;line-height:1.8}}footer{{padding:30px 0;color:var(--muted);font-size:13px}}li{{margin:7px 0}}video{{width:100%;border-radius:8px;background:#182f3b}}@media(max-width:760px){{.grid{{grid-template-columns:1fr}}header{{padding:45px 0 35px}}.wrap{{padding:0 18px}}nav .wrap{{gap:18px}}section{{padding:32px 0}}}}
 </style></head><body>
-<header><div class="wrap"><div class="eyebrow">ELEC5305 · Audio signal processing · Measured experiment</div><h1>When only part of speech is corrupted, how much should we change?</h1><p>{TITLE}</p><p style="font-size:14px">Leona Wang · SID 540686380 · GitHub zhi0708</p><div class="buttons"><a href="{REPO}">Code &amp; reproduction</a><a href="{REPO}/blob/main/report/final_report.pdf">Read the technical report</a><a href="#listen">Listen to examples</a></div></div></header>
+<header><div class="wrap"><div class="eyebrow">ELEC5305 · Audio signal processing · Measured experiment</div><h1>When only part of speech is corrupted, how much should we change?</h1><p>{TITLE}</p><p style="font-size:14px">Leona Wang · SID 540686380 · GitHub zhi0708</p><div class="buttons"><a href="{REPO}">Code &amp; reproduction</a><a href="final_report.pdf">Download the technical report</a><a href="#listen">Listen to examples</a></div></div></header>
 <nav aria-label="Page sections"><div class="wrap"><a href="#question">Question</a><a href="#design">Experiment</a><a href="#extended">Speaker-disjoint results</a><a href="#results">Original results</a><a href="#figures">Figures</a><a href="#listen">Audio</a><a href="#limits">Limits</a><a href="#reproduce">Reproduce</a></div></nav>
 <main class="wrap">
 <section id="question"><h2>Sparse disturbance, two processing strategies.</h2><p>The project compares detecting and repairing short intervals with enhancing the complete waveform using official pretrained GTCRN. We measure three things separately: whether the event is restored, whether surrounding speech changes, and what the processing costs.</p><div class="grid"><div class="stat"><strong>180</strong><span>Held-out controlled mixtures; 90 development mixtures</span></div><div class="stat"><strong>{s['detection']['stft']['f1']:.3f}</strong><span>STFT event F1; energy baseline {s['detection']['energy']['f1']:.3f}</span></div><div class="stat"><strong>{gt['event_error_reduction_db_mean']:.2f} dB</strong><span>Mean GTCRN event-error reduction; not a whole-file quality score</span></div></div><div class="note">The main result is a trade-off: GTCRN repairs the event more strongly, while conservative STFT-local repair preserves the uncorrupted reference more closely. The detector still misses many weak events.</div></section>
@@ -298,7 +331,7 @@ def build_site(s,table,dt,cp,overlap,extended):
 <section id="extended"><h2>Evaluation on unseen speakers</h2><p>{extension.headline(extended)}</p><p>Two L2-ARCTIC speakers were used for development and three different speakers for testing. The test also includes three new ESC-50 event recordings. The retuned STFT comparison uses the same development data as the short-context detector.</p>{md_table_to_html(extension.detection_table(extended))}<h3>Restoration and computation</h3>{md_table_to_html(extension.quality_table(extended))}<h3>Annotated /p/, /t/ and /k/ intervals</h3>{md_table_to_html(extension.phone_table(extended))}<p>Clean overlap counts how often each detector touched a labelled phone with no injected event. Each corrupted token is tested at three levels.</p><figure><img loading="lazy" src="assets/figures/06_extended_miss.png" alt="Weak and strong versions of the same keyboard insertion"><figcaption>The -6 dB insertion is missed while the +6 dB version crosses the frozen threshold in the same voiced interval.</figcaption></figure></section>
 <section id="results"><h2>Original single-recording benchmark</h2><h3>Event detection</h3>{md_table_to_html(dt)}<p>The STFT detector improves precision, not recall. Event matching permits partial interval overlap; sample-level recall is only {s['detection']['stft']['sample_metrics']['recall']:.3f}, revealing incomplete event coverage.</p>{md_table_to_html(overlap)}<h3>Restoration and collateral alteration</h3>{md_table_to_html(table)}<p>Errors are averaged across the held-out grid. GTCRN's stronger local repair comes with changes outside the event and lower whole-file STOI than the original sparse-corruption input. This is a result for this recording and checkpoint, not a general verdict on neural enhancement.</p><h3>Already-clean input</h3>{md_table_to_html(cp)}<p>Twenty seconds of reference input are processed without inserted noise. The STFT detector has one false event; the energy baseline has 24. Numerically changing samples is not proof of audible degradation.</p><p>Runtime uses the same {html.escape(s['environment']['cpu'])} CPU; median RTF excludes model loading and warm-up. RTF below one indicates offline throughput, not causal latency. GTCRN has {s['model']['parameters']:,} parameters including fixed mappings ({s['model']['trainable_parameters']:,} trainable); parameter storage is {s['model']['parameter_bytes']:,} bytes. Process peak memory was not measured.</p></section>
 <section id="figures"><h2>Five questions, five result figures.</h2>{gallery}</section>
-<section id="listen"><h2>Hear the same event in different speech contexts.</h2><p>These examples move one identical event at a fixed absolute amplitude. They are separate from the local-RMS strength sweep. Playback files use a shared signal scale; analytical measurements use the original floating-point arrays.</p><div class="grid">{audio}</div><h3>Short project demonstration</h3><video controls preload="metadata" src="assets/demo.mp4">Your browser does not support video. <a href="assets/demo.mp4">Download the demonstration</a>.</video><p>No formal listening experiment was performed. Examples are provided for informal inspection.</p></section>
+<section id="listen"><h2>Hear the same event in different speech contexts.</h2><p>These examples move one identical event at a fixed absolute amplitude. They are separate from the local-RMS strength sweep. Playback files use a shared signal scale; analytical measurements use the original floating-point arrays.</p><div class="grid">{audio}</div><h3>Short project demonstration</h3><p><a href="assets/demo.mp4">Download the MP4 demonstration</a></p><video controls preload="metadata" src="assets/demo.mp4">Your browser does not support video. <a href="assets/demo.mp4">Download the demonstration</a>.</video><p>No formal listening experiment was performed. Examples are provided for informal inspection.</p></section>
 <section id="limits"><h2>Limits that matter for interpreting these results.</h2><ul><li>The original 180 mixtures use one source recording. The extension adds three independent test speakers, with dependent mixture variants within each utterance.</li><li>Speech originally sampled at 8 kHz is upsampled for a general 16 kHz neural model. Domain mismatch may affect the comparison.</li><li>Speech is OSR_us_000_0010_8k.wav from Open Speech Repository, verified against a byte-identical public mirror; it is not certified noise-free.</li><li>The extension has two real recordings per event class in total, so broad event generalisation remains untested.</li><li>The original location proxies are complemented by a separate annotated phone analysis. Burst peak timing within each phone is estimated.</li><li>Conservative detection misses weak events; interpolation does not reconstruct complex voiced speech well.</li><li>No impulse-specific neural model, new model training, streaming implementation or measured peak-memory comparison.</li></ul><p>The supported conclusion is that local restoration, collateral alteration and computation should be measured separately for sparse corruption. The benchmark covers a small speaker sample and uses simple local interpolation.</p></section>
 <section id="reproduce"><h2>Run and inspect the complete experiment.</h2><pre>python -m pip install -r requirements.txt
 python scripts/prepare_data.py
