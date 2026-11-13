@@ -6,11 +6,23 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import matplotlib.font_manager as font_manager
 
-# Embed portable fonts instead of relying on viewer-specific Base-14 substitutes.
-for name, weight in [("ProjectSans", "normal"), ("ProjectSans-Bold", "bold")]:
-    path = font_manager.findfont(font_manager.FontProperties(family="DejaVu Sans", weight=weight))
+# Prefer the thesis font when installed, with a metrically compatible fallback.
+for name, weight, style in [
+    ('ProjectSerif', 'normal', 'normal'),
+    ('ProjectSerif-Bold', 'bold', 'normal'),
+    ('ProjectSerif-Italic', 'normal', 'italic'),
+    ('ProjectSerif-BoldItalic', 'bold', 'italic'),
+]:
+    properties = font_manager.FontProperties(
+        family=['Times New Roman', 'Liberation Serif', 'DejaVu Serif'],
+        weight=weight, style=style,
+    )
+    path = font_manager.findfont(properties)
     pdfmetrics.registerFont(TTFont(name, path))
-pdfmetrics.registerFontFamily("ProjectSans", normal="ProjectSans", bold="ProjectSans-Bold", italic="ProjectSans", boldItalic="ProjectSans-Bold")
+pdfmetrics.registerFontFamily(
+    'ProjectSerif', normal='ProjectSerif', bold='ProjectSerif-Bold',
+    italic='ProjectSerif-Italic', boldItalic='ProjectSerif-BoldItalic',
+)
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableStyle,Image,PageBreak,KeepTogether
@@ -18,17 +30,17 @@ from reportlab.platypus.tableofcontents import TableOfContents
 ROOT=Path(__file__).resolve().parents[1]
 WIDTH,HEIGHT=A4
 styles=getSampleStyleSheet()
-styles.add(ParagraphStyle(name='ReportTitle',fontName='ProjectSans-Bold',fontSize=23,leading=28,
-                          textColor=colors.HexColor('#183440'),spaceAfter=18))
-styles.add(ParagraphStyle(name='ReportH1',fontName='ProjectSans-Bold',fontSize=14,leading=18,
-                          textColor=colors.HexColor('#197b80'),spaceBefore=16,spaceAfter=9,keepWithNext=True))
-styles.add(ParagraphStyle(name='ReportH2',fontName='ProjectSans-Bold',fontSize=11.5,leading=15,
-                          textColor=colors.HexColor('#183440'),spaceBefore=12,spaceAfter=6,keepWithNext=True))
-styles.add(ParagraphStyle(name='ReportBody',fontName='ProjectSans',fontSize=10,leading=14,
-                          spaceAfter=8,splitLongWords=True))
-styles.add(ParagraphStyle(name='ReportCell',fontName='ProjectSans',fontSize=7.6,leading=10))
-styles.add(ParagraphStyle(name='ReportCaption',fontName='ProjectSans',fontSize=9,leading=12,
-                          textColor=colors.HexColor('#52656b'),spaceAfter=12))
+styles.add(ParagraphStyle(name='ReportTitle',fontName='ProjectSerif-Bold',fontSize=21,leading=24,
+                          textColor=colors.black,spaceAfter=18))
+styles.add(ParagraphStyle(name='ReportH1',fontName='ProjectSerif-Bold',fontSize=16,leading=18,
+                          textColor=colors.black,spaceBefore=16,spaceAfter=9,keepWithNext=True))
+styles.add(ParagraphStyle(name='ReportH2',fontName='ProjectSerif-Bold',fontSize=12.5,leading=15,
+                          textColor=colors.black,spaceBefore=12,spaceAfter=6,keepWithNext=True))
+styles.add(ParagraphStyle(name='ReportBody',fontName='ProjectSerif',fontSize=11,leading=12.7,
+                          spaceAfter=5,splitLongWords=True))
+styles.add(ParagraphStyle(name='ReportCell',fontName='ProjectSerif',fontSize=9.5,leading=11))
+styles.add(ParagraphStyle(name='ReportCaption',fontName='ProjectSerif',fontSize=9.5,leading=11.3,
+                          textColor=colors.black,spaceAfter=12))
 
 
 def text(value):
@@ -38,7 +50,7 @@ def text(value):
         match = re.fullmatch(r'\[([^\]]+)\]\((https://[^)]+)\)', piece)
         if match:
             label, url = match.groups()
-            pieces[i] = f'<link href="{html.escape(url, quote=True)}" color="#197b80"><u>{html.escape(label)}</u></link>'
+            pieces[i] = f'<link href="{html.escape(url, quote=True)}" color="#000000"><u>{html.escape(label)}</u></link>'
         else:
             pieces[i] = html.escape(piece)
     value = ''.join(pieces)
@@ -60,11 +72,11 @@ def figure(name):
     path = ROOT/'docs/assets/figures'/name
     title, caption = FIGURES[name]
     artwork = Image(str(path))
-    scale = min((WIDTH-90)/artwork.imageWidth, 265/artwork.imageHeight)
+    scale = min((WIDTH-114)/artwork.imageWidth, 265/artwork.imageHeight)
     artwork.drawWidth = artwork.imageWidth*scale
     artwork.drawHeight = artwork.imageHeight*scale
-    return KeepTogether([Paragraph(title, styles['ReportH2']), artwork,
-                         Paragraph(caption, styles['ReportCaption'])])
+    return KeepTogether([artwork, Spacer(1, 5),
+                         Paragraph(f'<b>{title}.</b> {caption}', styles['ReportCaption'])])
 
 
 class ReportDocument(SimpleDocTemplate):
@@ -85,14 +97,14 @@ def markdown_elements(source, with_contents=False):
                 if not all(re.fullmatch(r'[:\- ]+',s) for s in cells):
                     data.append([Paragraph(text(s),styles['ReportCell']) for s in cells])
                 i+=1
-            n=len(data[0]);width=WIDTH-90
+            n=len(data[0]);width=WIDTH-114
             widths=[115]+[(width-115)/(n-1)]*(n-1)
             t=Table(data,colWidths=widths,repeatRows=1,hAlign='LEFT')
-            t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e7f0ed')),
-                                  ('LINEBELOW',(0,0),(-1,0),.7,colors.HexColor('#197b80')),
-                                  ('LINEBELOW',(0,1),(-1,-1),.3,colors.HexColor('#d4ddda')),
-                                  ('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),6),
-                                  ('BOTTOMPADDING',(0,0),(-1,-1),6)]))
+            t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),
+                                  ('LINEBELOW',(0,0),(-1,0),.7,colors.black),
+                                  ('LINEBELOW',(0,1),(-1,-1),.3,colors.HexColor('#bbbbbb')),
+                                  ('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4),
+                                  ('BOTTOMPADDING',(0,0),(-1,-1),4)]))
             items.extend([t,Spacer(1,10)]);continue
         if line.startswith('!['):
             items.append(figure(Path(line.rsplit('](', 1)[1].removesuffix(')')).name))
@@ -101,6 +113,8 @@ def markdown_elements(source, with_contents=False):
             contents.levelStyles = [styles['ReportBody']]
             items.extend([Paragraph('Contents', styles['ReportH2']), contents, PageBreak(),
                           Paragraph(text(line[3:]), styles['ReportH1'])])
+        elif line == '## References' and with_contents:
+            items.extend([PageBreak(), Paragraph('References', styles['ReportH1'])])
         elif line.startswith('# '):items.append(Paragraph(text(line[2:]),styles['ReportTitle']))
         elif line.startswith('## '):items.append(Paragraph(text(line[3:]),styles['ReportH1']))
         elif line.startswith('### '):items.append(Paragraph(text(line[4:]),styles['ReportH2']))
@@ -115,10 +129,9 @@ def markdown_elements(source, with_contents=False):
 
 
 def footer(canvas,doc):
-    canvas.setStrokeColor(colors.HexColor('#cedad6'));canvas.line(45,36,WIDTH-45,36)
-    canvas.setFont('ProjectSans',8);canvas.setFillColor(colors.HexColor('#617279'))
-    canvas.drawString(45,24,'Leona Wang | SID 540686380 | ELEC5305')
-    canvas.drawRightString(WIDTH-45,24,str(doc.page))
+    canvas.setFont('ProjectSerif', 11)
+    canvas.setFillColor(colors.black)
+    canvas.drawCentredString(WIDTH/2, 27, str(doc.page))
 
 
 def main():
@@ -129,8 +142,8 @@ def main():
         source=(ROOT/'report'/f'{basename}.md').read_text()
         elements=markdown_elements(source, with_contents=basename=='final_report')
         output=ROOT/'report'/f'{basename}.pdf'
-        doc=ReportDocument(str(output),pagesize=A4,rightMargin=45,leftMargin=45,topMargin=45,
-                           bottomMargin=48,title=source.splitlines()[0][2:],author='Leona Wang')
+        doc=ReportDocument(str(output),pagesize=A4,rightMargin=51,leftMargin=51,topMargin=51,
+                           bottomMargin=51,title=source.splitlines()[0][2:],author='Leona Wang')
         doc.multiBuild(elements,onFirstPage=footer,onLaterPages=footer)
         shutil.copyfile(output,ROOT/'docs'/output.name)
         print(output)

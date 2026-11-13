@@ -93,7 +93,7 @@ The short-context detector measures first-difference energy in 2 ms windows. It 
 
 {grouped_table(s)}
 
-A hit requires interval overlap. Sample recall measures how much of the true event was covered. The strength and location breakdown shows where the detector remains unreliable. Low-level insertions can have less short-window contrast than the surrounding speech. Similar local transients can occur naturally in speech, as the clean control below illustrates. Figure 3 illustrates a matched failure: in BWC arctic a0011, the detector missed the -6 dB keyboard insertion during steady speech but detected the +6 dB version at the same sample position. Even the hit covered only 289 of 381 inserted samples. The unseen-template row pools the three extra ESC-50 recordings, so it supports only a limited check of transfer to new disturbance examples.
+An event counts as detected as soon as the predicted interval overlaps it. Sample recall also shows how much of the event was covered. Figure 3 uses the same keyboard sound at the same point in BWC arctic a0011. At -6 dB the score stayed below threshold. At +6 dB the detector found the event but marked only 289 of its 381 samples. The unseen-template row combines results for the three extra ESC-50 recordings.
 
 ![Matched weak and strong keyboard insertions](../docs/assets/figures/06_extended_miss.png)
 
