@@ -189,11 +189,9 @@ For these recordings, GTCRN repaired more of the noise interval. The local metho
 
 A focused next experiment would hold the predicted mask fixed and compare interpolation with prediction-based reconstruction [1] on voiced overlaps. Evaluating each method with both true and predicted masks would distinguish gains in repair from errors in localisation. Testing on additional speakers and event recordings would then check whether the result survives changes in source material.
 
-## 9. Reproduction and implementation acknowledgement
+## 9. Reproduction
 
 Use the README commands to set up dependencies and reproduce both benchmarks. Run scripts/prepare_extended_data.py and scripts/run_extended_experiment.py for the speaker-disjoint evaluation before rebuilding the deliverables. The run creates manifest intervals, frozen thresholds, per-case detection/restoration results, no-op tests, figures and exact example arrays. scripts/export_case.py exports any controlled input; scripts/enhance.py processes a user-supplied WAV without reference labels. See README for platform-specific environment and website instructions.
-
-AI assistance was used in code implementation and documentation. Reported measurements were produced by executing the accompanying experiment code, not taken from expected outcomes or substituted from published GTCRN benchmark numbers.
 
 ## References
 

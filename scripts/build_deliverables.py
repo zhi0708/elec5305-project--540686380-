@@ -165,11 +165,9 @@ For these recordings, GTCRN repaired more of the noise interval. The local metho
 
 A focused next experiment would hold the predicted mask fixed and compare interpolation with prediction-based reconstruction [1] on voiced overlaps. Evaluating each method with both true and predicted masks would distinguish gains in repair from errors in localisation. Testing on additional speakers and event recordings would then check whether the result survives changes in source material.
 
-## 9. Reproduction and implementation acknowledgement
+## 9. Reproduction
 
 Use the README commands to set up dependencies and reproduce both benchmarks. Run scripts/prepare_extended_data.py and scripts/run_extended_experiment.py for the speaker-disjoint evaluation before rebuilding the deliverables. The run creates manifest intervals, frozen thresholds, per-case detection/restoration results, no-op tests, figures and exact example arrays. scripts/export_case.py exports any controlled input; scripts/enhance.py processes a user-supplied WAV without reference labels. See README for platform-specific environment and website instructions.
-
-AI assistance was used in code implementation and documentation. Reported measurements were produced by executing the accompanying experiment code, not taken from expected outcomes or substituted from published GTCRN benchmark numbers.
 
 ## References
 
@@ -314,7 +312,7 @@ L2-ARCTIC: [corpus and annotation documentation](https://psi.engr.tamu.edu/l2-ar
 
 ## Acknowledgement
 
-See the [final report](report/final_report.md#9-reproduction-and-implementation-acknowledgement) for the implementation acknowledgement.
+Generative AI assisted with code implementation and documentation.
 '''
     (ROOT/'README.md').write_text(readme)
     build_site(s,table,dt,cp,overlap,extended)
@@ -368,7 +366,7 @@ python scripts/run_extended_experiment.py
 python scripts/plot_extended_case.py
 python scripts/build_deliverables.py
 python scripts/render_reports.py final_report</pre><p><a href="{REPO}/tree/main/results">Per-case results and manifest</a> · <a href="{REPO}/blob/main/report/final_report.md">Full report source</a> · <a href="{REPO}/blob/main/report/revised_proposal.pdf">Revised proposal</a> · <a href="{REPO}/blob/main/README.md">Setup and attribution</a></p><p>Primary references: <a href="https://doi.org/10.1109/ICASSP48485.2024.10448310">GTCRN (ICASSP 2024)</a>, <a href="https://doi.org/10.1016/j.sigpro.2025.110390">Sparse adaptive filtering (2026)</a>, <a href="https://doi.org/10.1109/TASLP.2021.3086131">HHT impulsive detection (2021)</a>, and <a href="https://github.com/karolpiczak/ESC-50">ESC-50</a>. Full historical references are in the report.</p><p>ESC-50 source attribution: Robinhood76 (knock, CC BY-NC), MegaPenguin13 (click, CC0), Anton (typing, CC BY); dataset licence CC BY-NC 3.0. Official GTCRN is obtained from its authors' repository.</p></section>
-</main><footer><div class="wrap">Leona Wang · ELEC5305 · <a href="{REPO}/blob/main/report/final_report.md#9-reproduction-and-implementation-acknowledgement">Implementation acknowledgement</a></div></footer></body></html>'''
+</main><footer><div class="wrap">Leona Wang · ELEC5305 · <a href="{REPO}/blob/main/README.md#acknowledgement">Implementation acknowledgement</a></div></footer></body></html>'''
     (ROOT/'docs/index.html').write_text(page)
     (ROOT/'docs/.nojekyll').touch()
 

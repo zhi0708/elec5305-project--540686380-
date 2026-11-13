@@ -160,4 +160,4 @@ L2-ARCTIC: [corpus and annotation documentation](https://psi.engr.tamu.edu/l2-ar
 
 ## Acknowledgement
 
-See the [final report](report/final_report.md#9-reproduction-and-implementation-acknowledgement) for the implementation acknowledgement.
+Generative AI assisted with code implementation and documentation.
