@@ -16,9 +16,22 @@ Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for
 - 90 development mixtures, 180 held-out mixtures, 20 seconds of clean no-op tests.
 - Five requested result figures, supplementary spectrograms, locally generated listening examples, CSV measurements and technical report.
 
-The test samples are variants of **one existing recording**, not independent speakers. Locations are **acoustic proxies**, not aligned phoneme labels. Detector recall remains low; limitations are reported alongside results.
+The original benchmark uses one Open Speech Repository recording. The extension uses speaker- and prompt-disjoint L2-ARCTIC utterances, three new ESC-50 templates and a separate check using manually annotated stop-consonant intervals.
 
-## Main measured results
+## Speaker-disjoint results
+
+On 1,728 mixtures from three held-out speakers, event F1 was 0.084 for the original STFT detector, 0.154 after retuning STFT, and 0.475 for the short-context detector.
+
+| Detector | Precision | Recall | F1 | Sample recall | Clean false events |
+| --- | --- | --- | --- | --- | --- |
+| Energy (original threshold) | 0.066 | 0.203 | 0.100 | 0.103 | 70 |
+| STFT (original threshold) | 0.206 | 0.053 | 0.084 | 0.011 | 6 |
+| STFT (retuned) | 0.127 | 0.194 | 0.154 | 0.049 | 33 |
+| Short-context detector | 0.466 | 0.484 | 0.475 | 0.212 | 14 |
+
+See [the technical report](report/final_report.md) for restoration, runtime, weak-event misses, and the annotated /p/, /t/ and /k/ comparison.
+
+## Original benchmark results
 
 | Detector | Precision | Recall | F1 | TP / FP / FN | Mean matched onset error (ms) |
 |---|---:|---:|---:|---|---:|
@@ -50,16 +63,21 @@ python -m pip install -r requirements.txt
 python scripts/prepare_data.py
 python -m pytest -q
 python scripts/run_experiment.py
+python scripts/prepare_extended_data.py
+python scripts/run_extended_experiment.py
+python scripts/plot_extended_case.py
 python scripts/build_deliverables.py
+python scripts/render_reports.py final_report
 ```
 
-On Windows, activate with `.venv\Scripts\activate`. No GPU is needed. Preparation downloads only three ESC-50 recordings and the official GTCRN repository/checkpoint. It checks the event hashes and pins GTCRN commit `502ebfab64da7c4a9af78dcb9c6ceef1ebb01c73`. Data downloads require an internet connection. Measurements exclude first-call model warm-up and loading. The tested software/hardware and checkpoint hash are in [summary.json](results/summary.json). Hardware-specific RTFs may change on your machine; deterministic signal metrics should agree within normal numerical tolerance.
+On Windows, activate with `.venv\Scripts\activate`. No GPU is needed. Preparation downloads only three ESC-50 recordings and the official GTCRN repository/checkpoint. It checks the event hashes and pins GTCRN commit `502ebfab64da7c4a9af78dcb9c6ceef1ebb01c73`. Data downloads require an internet connection. The extended preparation additionally downloads five checksum-verified L2-ARCTIC speaker archives (about 1.5 GB total) and three ESC-50 fold-2 clips. The corpus archives stay local. Measurements exclude first-call model warm-up and loading. The tested software/hardware and checkpoint hash are in [summary.json](results/summary.json). Hardware-specific RTFs may change on your machine; deterministic signal metrics should agree within normal numerical tolerance.
 
 ## Process your own recording
 
 ```bash
 python scripts/enhance.py input.wav output.wav --method stft --repair interpolate
 python scripts/enhance.py input.wav output_gtcrn.wav --method gtcrn
+python scripts/enhance.py input.wav output_transient.wav --method transient
 ```
 
 Local output also includes a JSON file of predicted sample intervals. Ground truth is not used. Thresholds are specific to this experiment and are not a validated general-purpose setting.
@@ -100,6 +118,8 @@ This writes clean.wav, noise.wav, noisy.wav, event_mask.npy and metadata.json. A
 
 Speech is `OSR_us_000_0010_8k.wav` from the [Open Speech Repository](https://www.voiptroubleshooter.com/open_speech/american.html). The inherited file is byte-identical to a public mirror of that file; its SHA-256 and verification details are in [data/speech_manifest.json](data/speech_manifest.json). OSR permits copying, modification and website incorporation with source attribution. It is a controlled reference, not certified noise-free speech. ESC-50 is CC BY-NC 3.0 as a dataset; individual records and attribution appear in [data/esc50/LICENSE.txt](data/esc50/LICENSE.txt) and [manifest.json](data/esc50/manifest.json). Used originals: Robinhood76 (door knock, CC BY-NC), MegaPenguin13 (trackpad click, CC0), Anton (typing, CC BY). Raw downloaded events and GTCRN files are excluded from git and fetched by setup; no licence is asserted over third-party materials.
 
+L2-ARCTIC: [corpus and annotation documentation](https://psi.engr.tamu.edu/l2-arctic-corpus-docs/), [pinned v5.0 mirror](https://huggingface.co/datasets/chikingsley/l2-arctic-release-v5.0/tree/cc02fd37197966e5de11ad737f7affd577c61992). Additional ESC-50 recordings: GodofPH (knock, CC0), esperri (mouse, CC0), SpazTastic (typing, CC Sampling+). Only derived numerical results are distributed for these new sources.
+
 ## Academic and technical references
 
 1. S. V. Vaseghi and P. J. W. Rayner, "Detection and suppression of impulsive noise in speech communication systems," IEE Proceedings I, vol. 137, no. 1, pp. 38-46, 1990.
@@ -109,4 +129,9 @@ Speech is `OSR_us_000_0010_8k.wav` from the [Open Speech Repository](https://www
 5. L. Zhou, H. Liu, L. Gan, Y. Zhou, M. Niedzwiecki and T.-K. Truong, "A novel sparse adaptive filter for suppressing impulsive disturbance in audio signals," Signal Processing, vol. 241, article 110390, April 2026. https://doi.org/10.1016/j.sigpro.2025.110390. Author code/data: https://github.com/minikatty/Lq_JSLMP
 6. K. J. Piczak, "ESC: Dataset for Environmental Sound Classification," ACM Multimedia, 2015. Dataset and attribution: https://github.com/karolpiczak/ESC-50
 7. C. H. Taal et al., "An Algorithm for Intelligibility Prediction of Time-Frequency Weighted Noisy Speech," IEEE TASLP, 2011. STOI implementation: https://github.com/mpariente/pystoi
- 
+8. G. Zhao et al., "L2-ARCTIC: A Non-native English Speech Corpus," Interspeech 2018, pp. 2783–2787. https://doi.org/10.21437/Interspeech.2018-1110
+
+
+## Acknowledgement
+
+AI assistance was used for implementation and documentation. The displayed results come from executing the supplied code; pretrained model performance is measured here rather than copied from its authors' benchmark.

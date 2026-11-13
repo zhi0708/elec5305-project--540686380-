@@ -50,12 +50,18 @@ def robust_z(x):
 
 def detect(x, detector, threshold, fs=FS, feat=None):
     f = (energy_features(x, fs) if detector == 'energy' else features(x, fs)) if feat is None else feat
-    frame_mask = (f['rise'] if detector == 'energy' else f['score']) > threshold
+    scores = f['rise'] if detector == 'energy' else f['score']
+    return score_mask(len(x), f, scores, threshold, fs)
+
+
+def score_mask(samples, f, scores, threshold, fs=FS):
+    """Map suprathreshold frames to a sample-level event mask."""
+    frame_mask = scores > threshold
     # Restrict candidates to <=150 ms. Do not discard isolated short clicks.
-    mask = np.zeros(len(x), bool)
+    mask = np.zeros(samples, bool)
     for a,b in regions(frame_mask):
         start = max(0, int(f['centers'][a] - f['length']//2))
-        end = min(len(x), int(f['centers'][b-1] + f['length']//2 + 1))
+        end = min(samples, int(f['centers'][b-1] + f['length']//2 + 1))
         if end-start <= round(.15*fs):
             mask[start:end] = True
     return mask

@@ -49,20 +49,24 @@ def event_bank():
         e=rng.normal(size=n)*np.hanning(n)
         bank.append(dict(name=f'synthetic_{duration}ms',x=e,kind='synthetic',duration_ms=duration))
     manifest=json.loads((ROOT/'data/esc50/manifest.json').read_text())
-    for row in manifest:
-        x=load_audio(ROOT/'data/esc50'/row['filename'])
-        envelope=np.sqrt(ndimage.uniform_filter1d(x*x,size=round(.002*FS)))
-        peak=int(np.argmax(envelope));floor=envelope[peak]*.10
-        a=peak;b=peak+1
-        while a>0 and envelope[a-1]>floor and peak-a<.075*FS: a-=1
-        while b<len(x) and envelope[b]>floor and b-peak<.075*FS: b+=1
-        # 2 ms guards and a short fade avoid hard-cut extraction clicks.
-        a=max(0,a-round(.002*FS));b=min(len(x),b+round(.002*FS))
-        e=x[a:b].copy();ramp=min(16,len(e)//2)
-        e[:ramp]*=np.linspace(0,1,ramp);e[-ramp:]*=np.linspace(1,0,ramp)
-        bank.append(dict(name=row['category'],x=e,kind='real',duration_ms=len(e)/FS*1000,
-                         source=row['filename'],crop_start_seconds=a/FS,crop_end_seconds=b/FS))
+    bank.extend(crop_real_event(row) for row in manifest)
     return bank
+
+
+def crop_real_event(row):
+    """Use the same extraction procedure for original and held-out recordings."""
+    x=load_audio(ROOT/'data/esc50'/row['filename'])
+    envelope=np.sqrt(np.maximum(ndimage.uniform_filter1d(x*x,size=round(.002*FS)),0.))
+    peak=int(np.argmax(envelope));floor=envelope[peak]*.10
+    a=peak;b=peak+1
+    while a>0 and envelope[a-1]>floor and peak-a<.075*FS: a-=1
+    while b<len(x) and envelope[b]>floor and b-peak<.075*FS: b+=1
+    # 2 ms guards and a short fade avoid hard-cut extraction clicks.
+    a=max(0,a-round(.002*FS));b=min(len(x),b+round(.002*FS))
+    e=x[a:b].copy();ramp=min(16,len(e)//2)
+    e[:ramp]*=np.linspace(0,1,ramp);e[-ramp:]*=np.linspace(1,0,ramp)
+    return dict(name=row['category'],x=e,kind='real',duration_ms=len(e)/FS*1000,
+                     source=row['filename'],crop_start_seconds=a/FS,crop_end_seconds=b/FS)
 
 
 def choose_locations(x, max_duration):

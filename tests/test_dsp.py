@@ -35,3 +35,17 @@ def test_region_metrics_penalise_collateral_changes():
     r=restoration_metrics(x,y,m,x)
     assert r['event_rmse']==0
     assert np.isclose(r['clean_rmse'],.01)
+
+
+def test_transient_detector_responds_to_isolated_burst_instead_of_silence():
+    from src.transient import detect_transient, transient_features
+
+    clean = np.zeros(16000)
+    event = np.random.default_rng(5305).normal(size=80) * np.hanning(80)
+    noisy = clean.copy()
+    noisy[4000:4080] = event * .1
+    config = dict(contrast_weight=.75, floor_weight=0., threshold=4.)
+    assert not detect_transient(clean, config).any()
+    direct = detect_transient(noisy, config)
+    assert direct[4000:4080].any()
+    assert np.array_equal(direct, detect_transient(noisy, config, transient_features(noisy)))

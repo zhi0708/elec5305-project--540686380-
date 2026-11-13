@@ -1,5 +1,6 @@
 """Build the English report, README and static website from measured results."""
 import csv,html,json
+import extended_results as extension
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 TITLE='Sparse Impulsive-Noise Removal: Classical Detection and Repair versus Neural Speech Enhancement'
@@ -13,6 +14,8 @@ NAMES={'noisy':'Unprocessed','energy_interpolate':'Energy + interpolation','stft
 def main():
     s=json.loads((ROOT/'results/summary.json').read_text())
     res=s['restoration'];det=s['detection'];clean=s['clean_preservation']
+    extended = extension.load(ROOT/'results/extended_summary.json')
+    overview = extension.headline(extended)
     report_dir=ROOT/'report';report_dir.mkdir(exist_ok=True)
     table='| Method | Event RMSE | Clean-region RMSE | Event error reduction (dB) | SI-SDR (dB) | STOI | Median RTF |\n|---|---:|---:|---:|---:|---:|---:|\n'
     for m in METHODS:
@@ -49,6 +52,7 @@ def main():
 6. K. J. Piczak, "ESC: Dataset for Environmental Sound Classification," ACM Multimedia, 2015. Dataset and attribution: https://github.com/karolpiczak/ESC-50
 7. C. H. Taal et al., "An Algorithm for Intelligibility Prediction of Time-Frequency Weighted Noisy Speech," IEEE TASLP, 2011. STOI implementation: https://github.com/mpariente/pystoi
 '''
+    refs += f'8. {extension.DATASET}\n'
     report=f'''# {TITLE}
 
 Leona Wang | SID 540686380 | GitHub: zhi0708 | ELEC5305
@@ -59,7 +63,7 @@ Project site: {SITE}
 
 ## Abstract
 
-Sparse impulsive interference presents a preservation problem: removing a short event can damage considerably more speech than the event itself. This project compares event-localised DSP with an official pretrained GTCRN enhancer using controlled insertions into a reference speech recording. An energy detector and a three-feature STFT detector drive local attenuation or linear interpolation. The experiment uses 90 development mixtures and 180 held-out mixtures, covering five event templates, three interference levels and three acoustic locations. Exact insertion intervals are available for every case. The STFT detector achieves event F1 {det['stft']['f1']:.3f}, compared with {det['energy']['f1']:.3f} for energy detection, while retaining low recall. GTCRN reduces mean event reconstruction error more strongly ({res['gtcrn']['event_error_reduction_db_mean']:.2f} dB), but introduces greater clean-region alteration than the STFT local methods. These results support a restoration-versus-preservation trade-off, not a universal ranking of DSP and neural enhancement.
+Sparse impulsive interference presents a preservation problem: removing a short event can damage considerably more speech than the event itself. This project compares event-localised DSP with an official pretrained GTCRN enhancer using controlled insertions into a reference speech recording. An energy detector and a three-feature STFT detector drive local attenuation or linear interpolation. The experiment uses 90 development mixtures and 180 held-out mixtures, covering five event templates, three interference levels and three acoustic locations. Exact insertion intervals are available for every case. The STFT detector achieves event F1 {det['stft']['f1']:.3f}, compared with {det['energy']['f1']:.3f} for energy detection, while retaining low recall. GTCRN reduces mean event reconstruction error more strongly ({res['gtcrn']['event_error_reduction_db_mean']:.2f} dB), but introduces greater clean-region alteration than the STFT local methods. These results show a restoration-versus-preservation trade-off. {overview}
 
 ## 1. Research question and motivation
 
@@ -127,15 +131,10 @@ Figure 2 displays event error against collateral error. Figure 3 uses the same 2
 
 The STFT detector produces one false event over the clean test clips, versus 24 for the energy baseline. Figure 4 shows that STFT false alarm in clip 6: a small waveform change coincides with a sharp normalised spectral-flux peak, rather than an unusually loud pulse. This explains how abrupt spectral evolution can cross the threshold even at low absolute energy. The waveform has not been phoneme-labelled, so the event is described as a legitimate reference-speech change, not identified as /t/ or /k/. The clean no-op test also shows that GTCRN changes almost all samples; the changes are numerically measurable, not evidence that every altered sample sounds worse. Audio examples enable informal inspection, but no formal listening study or perceptual preference claim is made.
 
-## 6. Limitations and conclusions
-
-The study has one source recording, four test clips and three real-event templates. Development and test share recording conditions, and mixing variants are dependent. No speaker-generalisation claim, confidence interval based on independent utterances or significance test is justified. The original recording is attributed to the Open Speech Repository and verified against a byte-identical public mirror; it is not independently certified noise-free. Location proxies do not establish phoneme identity. Event matching permits partial overlap; sample-level metrics expose that limitation. The chosen detector prioritises avoiding collateral alteration and misses weak or less broadband events. Straight-line repair is weak for longer voiced intervals. Neither a learned impulse-specific model nor the recent sparse adaptive algorithm is tested, and peak memory and causal latency are not measured.
-
-Within these controls, STFT features reduce false detections compared with energy-only detection, while pretrained GTCRN offers stronger local restoration and greater whole-waveform alteration. The strongest supported conclusion is that sparse corruption requires separate evaluation of event reconstruction, clean-region preservation and computation. A future study should expand source speakers and event templates, label consonant releases, and investigate either LPC reconstruction or detector-gated neural replacement. Neither extension is needed to interpret the completed core experiment.
-
+{extension.report_section(extended)}
 ## 7. Reproduction and implementation acknowledgement
 
-Run: python -m pip install -r requirements.txt; python scripts/prepare_data.py; python -m pytest -q; python scripts/run_experiment.py; python scripts/build_deliverables.py. The run creates manifest intervals, frozen thresholds, per-case detection/restoration results, no-op tests, figures and exact example arrays. scripts/export_case.py exports any controlled input; scripts/enhance.py processes a user-supplied WAV without reference labels. See README for platform-specific environment and website instructions.
+Use the README commands to set up dependencies and reproduce both benchmarks. Run scripts/prepare_extended_data.py and scripts/run_extended_experiment.py for the speaker-disjoint evaluation before rebuilding the deliverables. The run creates manifest intervals, frozen thresholds, per-case detection/restoration results, no-op tests, figures and exact example arrays. scripts/export_case.py exports any controlled input; scripts/enhance.py processes a user-supplied WAV without reference labels. See README for platform-specific environment and website instructions.
 
 AI assistance was used in code implementation and documentation. Reported measurements were produced by executing the accompanying experiment code, not taken from expected outcomes or substituted from published GTCRN benchmark numbers.
 
@@ -144,48 +143,6 @@ AI assistance was used in code implementation and documentation. Reported measur
 {refs}
 '''
     (report_dir/'final_report.md').write_text(report)
-    proposal=f'''# {TITLE}
-
-Leona Wang | SID: 540686380 | GitHub: zhi0708
-
-Repository: {REPO}
-
-Project site: {SITE}
-
-## Project overview
-
-Speech recordings may contain brief clicks, desk knocks or keyboard events while most of the waveform remains undisturbed. A general enhancement model processes the complete recording, whereas a specialised detector can attempt to alter only corrupted intervals. The revised research question is: for sparse short-duration impulsive interference, how does event-localised DSP compare with pretrained neural enhancement in event restoration, preservation of clean speech and computational cost? The secondary question asks how interference overlapping genuine speech transients changes this trade-off.
-
-## Background and motivation
-
-Short impulses differ from stationary background noise because they arrive abruptly and can overlap information-bearing speech onsets. Historical predictive reconstruction [1], stationary wavelet methods [2] and HHT detection [3] demonstrate several approaches to this problem. Recent sparse adaptive filtering [5] motivates making localisation and collateral alteration central to evaluation. This project does not reproduce that advanced algorithm. It instead compares a transparent, manageable DSP implementation with the official pretrained GTCRN [4], connecting classical audio features to contemporary lightweight speech enhancement. No neural architecture development or model training is required.
-
-## Methodology
-
-The implementation uses Python, NumPy, SciPy, Matplotlib and CPU PyTorch. A reference speech file already present in the repository is resampled from 8 to 16 kHz for compatibility with GTCRN. The first thirty seconds are split into six disjoint five-second clips, with two development clips and four test clips. This is a time-segment split within one recording, so generalisation to independent speakers remains outside the demonstrated scope.
-
-Known events are inserted at controlled locations. Two synthetic Gaussian/Hann bursts last five and twenty milliseconds. Three short real-event crops come from ESC-50: mouse click, door knock and keyboard typing. The generator retains the clean signal, event waveform, corrupted signal and exact insertion mask. Three event-to-local-speech RMS ratios (-6, 0 and +6 dB) probe weak through stronger disturbances. Three acoustic locations approximate silence, steady voiced speech and a speech transient. These locations are selected using energy, harmonicity and spectral change, without claiming phoneme-level alignment. The experiment contains ninety development mixtures and 180 test mixtures.
-
-The baseline compares short-time energy with an adaptive local median. The stronger detector combines energy rise, spectral flux and spectral bandwidth using eight-millisecond analysis windows and two-millisecond hops. Spectral flux captures abrupt change; bandwidth captures spectral spread. Both can also respond to legitimate speech changes, making clean-input false positives a necessary control. Thresholds are selected on development data, including a clean-preservation penalty, and frozen before test evaluation.
-
-Detected intervals are repaired by attenuation or linear interpolation. Samples outside predicted intervals remain exactly unchanged, although a false detection can still damage genuinely clean speech. The neural comparator uses the unmodified official DNS3 GTCRN checkpoint, pinned to a documented source commit. It processes precisely the same noisy signals with the official STFT settings and matched output length. No ground-truth mask, test-specific gain adjustment or reference-guided alignment is given to either tested method. An oracle-mask interpolation control is labelled diagnostic rather than a practical competitor.
-
-## Evaluation and completed outcomes
-
-Event precision, recall, F1 and onset error are reported by strength and acoustic overlap. Sample-level localisation is also retained because a small partial overlap can count as an event hit. Restoration RMSE is computed inside the true event; collateral RMSE is measured outside it. Whole-recording SI-SDR and STOI serve as secondary checks. Clean recordings are independently passed through both systems to measure false detections and unnecessary alteration. Real-time factor includes algorithm execution on the same CPU, excluding model loading and warm-up. Offline throughput is distinguished from causal latency.
-
-The core implementation and experiment have been completed. The STFT detector has measured event F1 {det['stft']['f1']:.3f}, versus {det['energy']['f1']:.3f} for energy detection, but still misses many events. GTCRN gives greater mean event error reduction, while the STFT local methods alter clean regions less. The study therefore exposes a trade-off rather than assuming a winner. Five result figures cover detection, collateral error, overlap examples, clean false alarms and computational cost. Waveforms, spectrograms, audio examples, per-case CSVs, exact masks and reproduction commands accompany the code.
-
-## Timeline and next steps
-
-The original proposal's literature and initial implementation stages are complete. The present milestone provides working code, real measurements and GitHub-ready documentation. The remaining revision stage should prioritise detector recall, broader speech/event coverage and reconstruction quality. Phoneme labelling or LPC reconstruction may be considered only if the core scope remains manageable. A GUI, new neural model and formal listening experiment are not required. The repository includes a static project website, full technical report and a short demonstration so the work is reviewable without running the environment.
-
-## References
-
-[1] Vaseghi and Rayner, IEE Proceedings I, 1990. [2] Nongpiur and Shpak, JASA, 2013. [3] Medina, Coelho and Zao, IEEE/ACM TASLP, 2021, DOI: 10.1109/TASLP.2021.3086131. [4] Rong et al., ICASSP, 2024, DOI: 10.1109/ICASSP48485.2024.10448310. [5] Zhou et al., Signal Processing 241, 2026, DOI: 10.1016/j.sigpro.2025.110390. Full bibliographic entries and dataset attributions appear in the accompanying technical report.
-'''
-    (report_dir/'revised_proposal.md').write_text(proposal)
-    print('Revised proposal word count:',len(proposal.split()))
     readme=f'''# {TITLE}
 
 **Leona Wang · SID 540686380 · ELEC5305**
@@ -204,9 +161,17 @@ Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for
 - 90 development mixtures, 180 held-out mixtures, 20 seconds of clean no-op tests.
 - Five requested result figures, supplementary spectrograms, locally generated listening examples, CSV measurements and technical report.
 
-The test samples are variants of **one existing recording**, not independent speakers. Locations are **acoustic proxies**, not aligned phoneme labels. Detector recall remains low; limitations are reported alongside results.
+The original benchmark uses one Open Speech Repository recording. The extension uses speaker- and prompt-disjoint L2-ARCTIC utterances, three new ESC-50 templates and a separate check using manually annotated stop-consonant intervals.
 
-## Main measured results
+## Speaker-disjoint results
+
+{overview}
+
+{extension.detection_table(extended)}
+
+See [the technical report](report/final_report.md) for restoration, runtime, weak-event misses, and the annotated /p/, /t/ and /k/ comparison.
+
+## Original benchmark results
 
 {dt}
 
@@ -227,16 +192,21 @@ python -m pip install -r requirements.txt
 python scripts/prepare_data.py
 python -m pytest -q
 python scripts/run_experiment.py
+python scripts/prepare_extended_data.py
+python scripts/run_extended_experiment.py
+python scripts/plot_extended_case.py
 python scripts/build_deliverables.py
+python scripts/render_reports.py final_report
 ```
 
-On Windows, activate with `.venv\\Scripts\\activate`. No GPU is needed. Preparation downloads only three ESC-50 recordings and the official GTCRN repository/checkpoint. It checks the event hashes and pins GTCRN commit `502ebfab64da7c4a9af78dcb9c6ceef1ebb01c73`. Data downloads require an internet connection. Measurements exclude first-call model warm-up and loading. The tested software/hardware and checkpoint hash are in [summary.json](results/summary.json). Hardware-specific RTFs may change on your machine; deterministic signal metrics should agree within normal numerical tolerance.
+On Windows, activate with `.venv\\Scripts\\activate`. No GPU is needed. Preparation downloads only three ESC-50 recordings and the official GTCRN repository/checkpoint. It checks the event hashes and pins GTCRN commit `502ebfab64da7c4a9af78dcb9c6ceef1ebb01c73`. Data downloads require an internet connection. The extended preparation additionally downloads five checksum-verified L2-ARCTIC speaker archives (about 1.5 GB total) and three ESC-50 fold-2 clips. The corpus archives stay local. Measurements exclude first-call model warm-up and loading. The tested software/hardware and checkpoint hash are in [summary.json](results/summary.json). Hardware-specific RTFs may change on your machine; deterministic signal metrics should agree within normal numerical tolerance.
 
 ## Process your own recording
 
 ```bash
 python scripts/enhance.py input.wav output.wav --method stft --repair interpolate
 python scripts/enhance.py input.wav output_gtcrn.wav --method gtcrn
+python scripts/enhance.py input.wav output_transient.wav --method transient
 ```
 
 Local output also includes a JSON file of predicted sample intervals. Ground truth is not used. Thresholds are specific to this experiment and are not a validated general-purpose setting.
@@ -277,6 +247,8 @@ This writes clean.wav, noise.wav, noisy.wav, event_mask.npy and metadata.json. A
 
 Speech is `OSR_us_000_0010_8k.wav` from the [Open Speech Repository](https://www.voiptroubleshooter.com/open_speech/american.html). The inherited file is byte-identical to a public mirror of that file; its SHA-256 and verification details are in [data/speech_manifest.json](data/speech_manifest.json). OSR permits copying, modification and website incorporation with source attribution. It is a controlled reference, not certified noise-free speech. ESC-50 is CC BY-NC 3.0 as a dataset; individual records and attribution appear in [data/esc50/LICENSE.txt](data/esc50/LICENSE.txt) and [manifest.json](data/esc50/manifest.json). Used originals: Robinhood76 (door knock, CC BY-NC), MegaPenguin13 (trackpad click, CC0), Anton (typing, CC BY). Raw downloaded events and GTCRN files are excluded from git and fetched by setup; no licence is asserted over third-party materials.
 
+L2-ARCTIC: [corpus and annotation documentation](https://psi.engr.tamu.edu/l2-arctic-corpus-docs/), [pinned v5.0 mirror](https://huggingface.co/datasets/chikingsley/l2-arctic-release-v5.0/tree/cc02fd37197966e5de11ad737f7affd577c61992). Additional ESC-50 recordings: GodofPH (knock, CC0), esperri (mouse, CC0), SpazTastic (typing, CC Sampling+). Only derived numerical results are distributed for these new sources.
+
 ## Academic and technical references
 
 {refs}
@@ -286,16 +258,7 @@ Speech is `OSR_us_000_0010_8k.wav` from the [Open Speech Repository](https://www
 AI assistance was used for implementation and documentation. The displayed results come from executing the supplied code; pretrained model performance is measured here rather than copied from its authors' benchmark.
 '''
     (ROOT/'README.md').write_text(readme)
-    (report_dir/'brief_submission.txt').write_text(f'''Sparse Impulsive-Noise Removal: Classical Detection and Repair versus Neural Speech Enhancement
-
-Project website: {SITE}
-Repository: {REPO}
-
-I have implemented a controlled impulsive-noise generator, energy and STFT-feature detectors, event-localised attenuation/interpolation, and inference with the official pretrained GTCRN model. The project includes synthetic and real ESC-50 events, exact insertion masks, frozen development-set thresholds and 180 held-out mixture evaluations. Results separately measure detection, event restoration, clean-region alteration, SI-SDR/STOI and CPU runtime, with clean-input false-positive controls. The website presents measured results, figures, limitations and reproduction instructions. Listening examples are generated locally. The comparison shows a trade-off between stronger local restoration with GTCRN and lower collateral alteration with conservative STFT-local repair.
-
-Preparation note (remove before submitting): publish and verify the website URL first. This text is a submission draft, not confirmation of deployment.
-''')
-    build_site(s,table,dt,cp,overlap)
+    build_site(s,table,dt,cp,overlap,extended)
 
 
 def md_table_to_html(table):
@@ -304,7 +267,7 @@ def md_table_to_html(table):
     return '<div class="table-wrap"><table><thead><tr>'+''.join('<th>'+html.escape(x)+'</th>' for x in head)+'</tr></thead><tbody>'+''.join('<tr>'+''.join('<td>'+html.escape(x)+'</td>' for x in r)+'</tr>' for r in body)+'</tbody></table></div>'
 
 
-def build_site(s,table,dt,cp,overlap):
+def build_site(s,table,dt,cp,overlap,extended):
     stft=s['restoration']['stft_interpolate'];gt=s['restoration']['gtcrn']
     figs=[('01_detection.png','Detection depends on event strength and overlap.','Precision, recall and F1 are pooled separately at each strength and acoustic location. Weak disturbances are often missed.'),
           ('02_tradeoff.png','Removing an event and preserving speech are separate objectives.','The horizontal axis measures alteration outside the true inserted interval. The vertical axis measures restoration error inside it. Oracle interpolation is a diagnostic, not a tested deployable detector.'),
@@ -328,19 +291,24 @@ def build_site(s,table,dt,cp,overlap):
 :root{{--ink:#182f3b;--teal:#197b80;--cream:#f8f7f2;--muted:#556774;--line:#dce2e0;--white:#fff}}*{{box-sizing:border-box}}html{{scroll-behavior:smooth}}body{{margin:0;background:var(--cream);color:var(--ink);font:16px/1.65 system-ui,-apple-system,sans-serif}}a{{color:var(--teal)}}.wrap{{max-width:1120px;margin:auto;padding:0 26px}}header{{padding:76px 0 54px;background:var(--ink);color:white}}.eyebrow{{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#a3d6d4}}h1{{font-size:clamp(32px,5vw,54px);line-height:1.14;max-width:980px;margin:18px 0 25px;font-weight:650;letter-spacing:-1.4px}}header p{{max-width:790px;color:#d5e0e3;font-size:19px}}.buttons{{display:flex;gap:12px;flex-wrap:wrap;margin-top:25px}}.buttons a{{padding:10px 17px;border:1px solid #67858f;border-radius:5px;color:white;text-decoration:none;font-size:14px}}nav{{position:sticky;top:0;background:#fffffff2;border-bottom:1px solid var(--line);z-index:5}}nav .wrap{{display:flex;gap:24px;padding-top:13px;padding-bottom:13px;overflow:auto}}nav a{{text-decoration:none;white-space:nowrap;font-size:14px}}section{{padding:45px 0;border-bottom:1px solid var(--line);scroll-margin-top:65px}}h2{{font-size:30px;line-height:1.25;margin:0 0 20px;letter-spacing:-.5px}}h3{{font-size:19px}}p{{max-width:930px}}.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}}.stat,.audio-card{{background:white;border:1px solid var(--line);border-radius:8px;padding:22px}}.stat strong{{display:block;font-size:32px;color:var(--teal);line-height:1.2}}.stat span{{font-size:13px;color:var(--muted)}}.note{{border-left:4px solid var(--teal);padding:15px 20px;background:#eaf2ef;margin:24px 0}}.table-wrap{{overflow:auto;background:white;border:1px solid var(--line);border-radius:6px;margin:24px 0}}table{{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}}th,td{{padding:12px 14px;border-bottom:1px solid var(--line);text-align:right}}th:first-child,td:first-child{{text-align:left}}th{{background:#edf2f0}}figure{{margin:26px 0;background:white;border:1px solid var(--line);border-radius:8px;padding:15px}}figure img{{width:100%;height:auto;display:block}}figcaption{{font-size:14px;color:var(--muted);padding:14px 8px 4px;line-height:1.6}}figcaption strong{{color:var(--ink)}}.audio-card label{{display:block;font-size:13px;color:var(--muted);margin-top:17px}}audio{{width:100%;margin-top:6px}}pre{{background:#172d39;color:#e5f3ef;padding:24px;border-radius:7px;overflow:auto;font-size:13px;line-height:1.8}}footer{{padding:30px 0;color:var(--muted);font-size:13px}}li{{margin:7px 0}}video{{width:100%;border-radius:8px;background:#182f3b}}@media(max-width:760px){{.grid{{grid-template-columns:1fr}}header{{padding:45px 0 35px}}.wrap{{padding:0 18px}}nav .wrap{{gap:18px}}section{{padding:32px 0}}}}
 </style></head><body>
 <header><div class="wrap"><div class="eyebrow">ELEC5305 · Audio signal processing · Measured experiment</div><h1>When only part of speech is corrupted, how much should we change?</h1><p>{TITLE}</p><p style="font-size:14px">Leona Wang · SID 540686380 · GitHub zhi0708</p><div class="buttons"><a href="{REPO}">Code &amp; reproduction</a><a href="{REPO}/blob/main/report/final_report.pdf">Read the technical report</a><a href="#listen">Listen to examples</a></div></div></header>
-<nav aria-label="Page sections"><div class="wrap"><a href="#question">Question</a><a href="#design">Experiment</a><a href="#results">Results</a><a href="#figures">Figures</a><a href="#listen">Audio</a><a href="#limits">Limits</a><a href="#reproduce">Reproduce</a></div></nav>
+<nav aria-label="Page sections"><div class="wrap"><a href="#question">Question</a><a href="#design">Experiment</a><a href="#extended">Speaker-disjoint results</a><a href="#results">Original results</a><a href="#figures">Figures</a><a href="#listen">Audio</a><a href="#limits">Limits</a><a href="#reproduce">Reproduce</a></div></nav>
 <main class="wrap">
 <section id="question"><h2>Sparse disturbance, two processing strategies.</h2><p>The project compares detecting and repairing short intervals with enhancing the complete waveform using official pretrained GTCRN. We measure three things separately: whether the event is restored, whether surrounding speech changes, and what the processing costs.</p><div class="grid"><div class="stat"><strong>180</strong><span>Held-out controlled mixtures; 90 development mixtures</span></div><div class="stat"><strong>{s['detection']['stft']['f1']:.3f}</strong><span>STFT event F1; energy baseline {s['detection']['energy']['f1']:.3f}</span></div><div class="stat"><strong>{gt['event_error_reduction_db_mean']:.2f} dB</strong><span>Mean GTCRN event-error reduction; not a whole-file quality score</span></div></div><div class="note">The main result is a trade-off: GTCRN repairs the event more strongly, while conservative STFT-local repair preserves the uncorrupted reference more closely. The detector still misses many weak events.</div></section>
 <section id="design"><h2>Controlled inputs, frozen thresholds.</h2><p>Six non-overlapping five-second clips come from the repository's existing speech recording. Clips 1–2 set detector thresholds; clips 3–6 are held out. Every inserted event has a known waveform, location and support mask. All systems receive identical noisy inputs.</p><ul><li><strong>Events:</strong> 5 ms and 20 ms synthetic bursts; cropped ESC-50 door knock, mouse click and keyboard events.</li><li><strong>Levels:</strong> −6, 0 and +6 dB relative to local speech RMS, with a defined silence floor.</li><li><strong>Locations:</strong> pause, steady voiced candidate and speech-transient candidate; acoustic proxies, not phoneme alignment.</li><li><strong>Local DSP:</strong> adaptive energy detection, or energy/flux/bandwidth STFT detection, followed by attenuation/interpolation.</li><li><strong>Neural reference:</strong> official DNS3 GTCRN checkpoint, frozen weights, no training.</li><li><strong>Controls:</strong> clean-input false alarms and no-op preservation; true-mask interpolation as a diagnostic only.</li></ul><p>All measurements use floating-point signals, fixed shared scaling and exact true-event intervals. Local methods preserve samples outside predicted intervals, but false detections can still damage clean speech.</p></section>
-<section id="results"><h2>What the experiment actually shows.</h2><h3>Event detection</h3>{md_table_to_html(dt)}<p>The STFT detector improves precision, not recall. Event matching permits partial interval overlap; sample-level recall is only {s['detection']['stft']['sample_metrics']['recall']:.3f}, revealing incomplete event coverage.</p>{md_table_to_html(overlap)}<h3>Restoration and collateral alteration</h3>{md_table_to_html(table)}<p>Errors are averaged across the held-out grid. GTCRN's stronger local repair comes with changes outside the event and lower whole-file STOI than the original sparse-corruption input. This is a result for this recording and checkpoint, not a general verdict on neural enhancement.</p><h3>Already-clean input</h3>{md_table_to_html(cp)}<p>Twenty seconds of reference input are processed without inserted noise. The STFT detector has one false event; the energy baseline has 24. Numerically changing samples is not proof of audible degradation.</p><p>Runtime uses the same {html.escape(s['environment']['cpu'])} CPU; median RTF excludes model loading and warm-up. RTF below one indicates offline throughput, not causal latency. GTCRN has {s['model']['parameters']:,} parameters including fixed mappings ({s['model']['trainable_parameters']:,} trainable); parameter storage is {s['model']['parameter_bytes']:,} bytes. Process peak memory was not measured.</p></section>
+<section id="extended"><h2>Evaluation on unseen speakers</h2><p>{extension.headline(extended)}</p><p>Two L2-ARCTIC speakers were used for development and three different speakers for testing. The test also includes three new ESC-50 event recordings. The retuned STFT comparison uses the same development data as the short-context detector.</p>{md_table_to_html(extension.detection_table(extended))}<h3>Restoration and computation</h3>{md_table_to_html(extension.quality_table(extended))}<h3>Annotated /p/, /t/ and /k/ intervals</h3>{md_table_to_html(extension.phone_table(extended))}<p>Clean overlap counts how often each detector touched a labelled phone with no injected event. Each corrupted token is tested at three levels.</p><figure><img loading="lazy" src="assets/figures/06_extended_miss.png" alt="Weak and strong versions of the same keyboard insertion"><figcaption>The -6 dB insertion is missed while the +6 dB version crosses the frozen threshold in the same voiced interval.</figcaption></figure></section>
+<section id="results"><h2>Original single-recording benchmark</h2><h3>Event detection</h3>{md_table_to_html(dt)}<p>The STFT detector improves precision, not recall. Event matching permits partial interval overlap; sample-level recall is only {s['detection']['stft']['sample_metrics']['recall']:.3f}, revealing incomplete event coverage.</p>{md_table_to_html(overlap)}<h3>Restoration and collateral alteration</h3>{md_table_to_html(table)}<p>Errors are averaged across the held-out grid. GTCRN's stronger local repair comes with changes outside the event and lower whole-file STOI than the original sparse-corruption input. This is a result for this recording and checkpoint, not a general verdict on neural enhancement.</p><h3>Already-clean input</h3>{md_table_to_html(cp)}<p>Twenty seconds of reference input are processed without inserted noise. The STFT detector has one false event; the energy baseline has 24. Numerically changing samples is not proof of audible degradation.</p><p>Runtime uses the same {html.escape(s['environment']['cpu'])} CPU; median RTF excludes model loading and warm-up. RTF below one indicates offline throughput, not causal latency. GTCRN has {s['model']['parameters']:,} parameters including fixed mappings ({s['model']['trainable_parameters']:,} trainable); parameter storage is {s['model']['parameter_bytes']:,} bytes. Process peak memory was not measured.</p></section>
 <section id="figures"><h2>Five questions, five result figures.</h2>{gallery}</section>
 <section id="listen"><h2>Hear the same event in different speech contexts.</h2><p>These examples move one identical event at a fixed absolute amplitude. They are separate from the local-RMS strength sweep. Playback files use a shared signal scale; analytical measurements use the original floating-point arrays.</p><div class="grid">{audio}</div><h3>Short project demonstration</h3><video controls preload="metadata" src="assets/demo.mp4">Your browser does not support video. <a href="assets/demo.mp4">Download the demonstration</a>.</video><p>No formal listening experiment was performed. Examples are provided for informal inspection.</p></section>
-<section id="limits"><h2>Limits that matter for interpreting these results.</h2><ul><li>One source recording, not independent speakers; the 180 mixtures are dependent controlled variants.</li><li>Speech originally sampled at 8 kHz is upsampled for a general 16 kHz neural model. Domain mismatch may affect the comparison.</li><li>Speech is OSR_us_000_0010_8k.wav from Open Speech Repository, verified against a byte-identical public mirror; it is not certified noise-free.</li><li>One real template per class; broad event generalisation has not been tested.</li><li>Acoustic location proxies cannot establish that a false alarm is /t/ or /k/.</li><li>Conservative detection misses weak events; interpolation does not reconstruct complex voiced speech well.</li><li>No impulse-specific neural model, new model training, streaming implementation or measured peak-memory comparison.</li></ul><p>The supported conclusion is that local restoration, collateral alteration and computation should be measured separately for sparse corruption. A larger corpus, verified consonant labels and one focused reconstruction extension are natural next steps.</p></section>
+<section id="limits"><h2>Limits that matter for interpreting these results.</h2><ul><li>The original 180 mixtures use one source recording. The extension adds three independent test speakers, with dependent mixture variants within each utterance.</li><li>Speech originally sampled at 8 kHz is upsampled for a general 16 kHz neural model. Domain mismatch may affect the comparison.</li><li>Speech is OSR_us_000_0010_8k.wav from Open Speech Repository, verified against a byte-identical public mirror; it is not certified noise-free.</li><li>The extension has two real recordings per event class in total, so broad event generalisation remains untested.</li><li>The original location proxies are complemented by a separate annotated phone analysis. Burst peak timing within each phone is estimated.</li><li>Conservative detection misses weak events; interpolation does not reconstruct complex voiced speech well.</li><li>No impulse-specific neural model, new model training, streaming implementation or measured peak-memory comparison.</li></ul><p>The supported conclusion is that local restoration, collateral alteration and computation should be measured separately for sparse corruption. The benchmark covers a small speaker sample and uses simple local interpolation.</p></section>
 <section id="reproduce"><h2>Run and inspect the complete experiment.</h2><pre>python -m pip install -r requirements.txt
 python scripts/prepare_data.py
 python -m pytest -q
 python scripts/run_experiment.py
-python scripts/build_deliverables.py</pre><p><a href="{REPO}/tree/main/results">Per-case results and manifest</a> · <a href="{REPO}/blob/main/report/final_report.md">Full report source</a> · <a href="{REPO}/blob/main/report/revised_proposal.pdf">Revised proposal</a> · <a href="{REPO}/blob/main/README.md">Setup and attribution</a></p><p>Primary references: <a href="https://doi.org/10.1109/ICASSP48485.2024.10448310">GTCRN (ICASSP 2024)</a>, <a href="https://doi.org/10.1016/j.sigpro.2025.110390">Sparse adaptive filtering (2026)</a>, <a href="https://doi.org/10.1109/TASLP.2021.3086131">HHT impulsive detection (2021)</a>, and <a href="https://github.com/karolpiczak/ESC-50">ESC-50</a>. Full historical references are in the report.</p><p>ESC-50 source attribution: Robinhood76 (knock, CC BY-NC), MegaPenguin13 (click, CC0), Anton (typing, CC BY); dataset licence CC BY-NC 3.0. Official GTCRN is obtained from its authors' repository.</p></section>
+python scripts/prepare_extended_data.py
+python scripts/run_extended_experiment.py
+python scripts/plot_extended_case.py
+python scripts/build_deliverables.py
+python scripts/render_reports.py final_report</pre><p><a href="{REPO}/tree/main/results">Per-case results and manifest</a> · <a href="{REPO}/blob/main/report/final_report.md">Full report source</a> · <a href="{REPO}/blob/main/report/revised_proposal.pdf">Revised proposal</a> · <a href="{REPO}/blob/main/README.md">Setup and attribution</a></p><p>Primary references: <a href="https://doi.org/10.1109/ICASSP48485.2024.10448310">GTCRN (ICASSP 2024)</a>, <a href="https://doi.org/10.1016/j.sigpro.2025.110390">Sparse adaptive filtering (2026)</a>, <a href="https://doi.org/10.1109/TASLP.2021.3086131">HHT impulsive detection (2021)</a>, and <a href="https://github.com/karolpiczak/ESC-50">ESC-50</a>. Full historical references are in the report.</p><p>ESC-50 source attribution: Robinhood76 (knock, CC BY-NC), MegaPenguin13 (click, CC0), Anton (typing, CC BY); dataset licence CC BY-NC 3.0. Official GTCRN is obtained from its authors' repository.</p></section>
 </main><footer><div class="wrap">Leona Wang · ELEC5305 · AI-assisted implementation and documentation. All displayed numerical results were generated by the accompanying code.</div></footer></body></html>'''
     (ROOT/'docs/index.html').write_text(page)
     (ROOT/'docs/.nojekyll').touch()

@@ -1,5 +1,5 @@
 """Typeset the measured report and revised proposal; no new measurements."""
-import html,re,shutil
+import argparse,html,io,re,shutil
 from pathlib import Path
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
@@ -80,7 +80,10 @@ def footer(canvas,doc):
 
 def main():
     from PIL import Image as PILImage
-    for basename in ['final_report','revised_proposal']:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('report', nargs='?', choices=['final_report', 'revised_proposal'])
+    chosen = parser.parse_args().report
+    for basename in ([chosen] if chosen else ['final_report', 'revised_proposal']):
         source=(ROOT/'report'/f'{basename}.md').read_text()
         elements=markdown_elements(source)
         if basename=='final_report':
@@ -89,12 +92,19 @@ def main():
                 ('02_tradeoff.png','Figure 2. Event restoration versus collateral alteration','Lower error on both axes is desirable. True-mask interpolation is diagnostic only.'),
                 ('03_overlap_waveforms.png','Figure 3. Identical event at different locations','A fixed 20 ms event waveform and absolute amplitude are used for all three insertions.'),
                 ('04_clean_false_positive.png','Figure 4. False detection on clean reference speech','The high normalised flux peak triggers an event despite low absolute energy. No phoneme label is available.'),
-                ('05_quality_runtime.png','Figure 5. Restoration quality and CPU runtime','Processing is timed on the same CPU. Model loading and warm-up are excluded; no causal latency is inferred.')]:
+                ('05_quality_runtime.png','Figure 5. Restoration quality and CPU runtime','Processing is timed on the same CPU. Model loading and warm-up are excluded; no causal latency is inferred.'),
+                ('06_extended_miss.png','Figure 6. Matched weak and strong keyboard insertions','Same unseen recording, event template and insertion interval. The score crosses the threshold for the stronger event only.')]:
                 path=ROOT/'docs/assets/figures'/name
-                iw,ih=PILImage.open(path).size
+                with PILImage.open(path) as artwork:
+                    artwork = artwork.convert('RGB')
+                    artwork.thumbnail((1400, 1400))
+                    iw, ih = artwork.size
+                    encoded = io.BytesIO()
+                    artwork.save(encoded, format='JPEG', quality=86, optimize=True)
+                    encoded.seek(0)
                 scale=min((WIDTH-90)/iw,(HEIGHT-160)/ih)
                 elements.extend([PageBreak(),Paragraph(title,styles['ReportH1']),
-                                 Image(str(path),width=iw*scale,height=ih*scale),
+                                 Image(encoded,width=iw*scale,height=ih*scale),
                                  Paragraph(caption,styles['ReportCaption'])])
         output=ROOT/'report'/f'{basename}.pdf'
         doc=SimpleDocTemplate(str(output),pagesize=A4,rightMargin=45,leftMargin=45,topMargin=45,

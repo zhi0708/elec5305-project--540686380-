@@ -17,3 +17,11 @@ report/*_zh.md
 report/brief_submission.txt
 
 # Listening exports are generated locally from attributed public data.
+
+# Downloaded speech archives for the speaker-disjoint benchmark.
+data/l2_arctic/
+results/extended_detection.csv
+results/extended_restoration.csv
+results/extended_phone_cases.csv
+results/extended_phone_clean.csv
+results/extended_clean.csv

@@ -8,7 +8,7 @@ Project site: https://zhi0708.github.io/elec5305-project--540686380-/
 
 ## Abstract
 
-Sparse impulsive interference presents a preservation problem: removing a short event can damage considerably more speech than the event itself. This project compares event-localised DSP with an official pretrained GTCRN enhancer using controlled insertions into a reference speech recording. An energy detector and a three-feature STFT detector drive local attenuation or linear interpolation. The experiment uses 90 development mixtures and 180 held-out mixtures, covering five event templates, three interference levels and three acoustic locations. Exact insertion intervals are available for every case. The STFT detector achieves event F1 0.362, compared with 0.080 for energy detection, while retaining low recall. GTCRN reduces mean event reconstruction error more strongly (5.87 dB), but introduces greater clean-region alteration than the STFT local methods. These results support a restoration-versus-preservation trade-off, not a universal ranking of DSP and neural enhancement.
+Sparse impulsive interference presents a preservation problem: removing a short event can damage considerably more speech than the event itself. This project compares event-localised DSP with an official pretrained GTCRN enhancer using controlled insertions into a reference speech recording. An energy detector and a three-feature STFT detector drive local attenuation or linear interpolation. The experiment uses 90 development mixtures and 180 held-out mixtures, covering five event templates, three interference levels and three acoustic locations. Exact insertion intervals are available for every case. The STFT detector achieves event F1 0.362, compared with 0.080 for energy detection, while retaining low recall. GTCRN reduces mean event reconstruction error more strongly (5.87 dB), but introduces greater clean-region alteration than the STFT local methods. These results show a restoration-versus-preservation trade-off. On 1,728 mixtures from three held-out speakers, event F1 was 0.084 for the original STFT detector, 0.154 after retuning STFT, and 0.475 for the short-context detector.
 
 ## 1. Research question and motivation
 
@@ -100,15 +100,66 @@ Figure 2 displays event error against collateral error. Figure 3 uses the same 2
 
 The STFT detector produces one false event over the clean test clips, versus 24 for the energy baseline. Figure 4 shows that STFT false alarm in clip 6: a small waveform change coincides with a sharp normalised spectral-flux peak, rather than an unusually loud pulse. This explains how abrupt spectral evolution can cross the threshold even at low absolute energy. The waveform has not been phoneme-labelled, so the event is described as a legitimate reference-speech change, not identified as /t/ or /k/. The clean no-op test also shows that GTCRN changes almost all samples; the changes are numerically measurable, not evidence that every altered sample sounds worse. Audio examples enable informal inspection, but no formal listening study or perceptual preference claim is made.
 
-## 6. Limitations and conclusions
+## 6. Speaker-disjoint evaluation
 
-The study has one source recording, four test clips and three real-event templates. Development and test share recording conditions, and mixing variants are dependent. No speaker-generalisation claim, confidence interval based on independent utterances or significance test is justified. The original recording is attributed to the Open Speech Repository and verified against a byte-identical public mirror; it is not independently certified noise-free. Location proxies do not establish phoneme identity. Event matching permits partial overlap; sample-level metrics expose that limitation. The chosen detector prioritises avoiding collateral alteration and misses weak or less broadband events. Straight-line repair is weak for longer voiced intervals. Neither a learned impulse-specific model nor the recent sparse adaptive algorithm is tested, and peak memory and causal latency are not measured.
+### 6.1 Protocol and detector
 
-Within these controls, STFT features reduce false detections compared with energy-only detection, while pretrained GTCRN offers stronger local restoration and greater whole-waveform alteration. The strongest supported conclusion is that sparse corruption requires separate evaluation of event reconstruction, clean-region preservation and computation. A future study should expand source speakers and event templates, label consonant releases, and investigate either LPC reconstruction or detector-gated neural replacement. Neither extension is needed to interpret the completed core experiment.
+The extension uses L2-ARCTIC v5.0 [8]. The first six manually annotated utterances in sorted order for ASI and HKK form the development set. The next eight utterance IDs for each of BWC, TLV and YDCK form the test set. Neither speakers nor prompt IDs cross the split. Waveforms are resampled from 44.1 kHz to 16 kHz and each reference is scaled once to a peak of 0.15. The reference, mixture and outputs then share that scale. In development, the original five event templates yield 540 mixtures. Testing yields 1,728 mixtures, including 648 using three additional ESC-50 recordings from fold 2. Clean controls total 120.0 seconds. These are controlled variants of 24 test utterances from three speakers.
+
+The short-context detector measures first-difference energy in 2 ms windows. It compares this energy with the larger mean of the two flanks, approximately 20–60 ms away. This downweights rises that continue into surrounding speech. Its score combines positive flank contrast in dB (scaled by 6), positive local energy rise (scaled by 9), bandwidth (scaled by 1700 Hz), capped flux min(3 × flux, 1), and an optional low-level penalty. Development selected contrast weight 0.75, low-level penalty weight 0.0, and threshold 4.0. A threshold-only STFT control selected 4.0 from the original eight-value grid. Both searches used the same development clips and maximised event F1 with each clean false alarm weighted by 45. Test mixtures and phoneme labels did not select settings. The published energy and STFT thresholds of 9 and 5 serve as fixed transfer baselines.
+
+### 6.2 Detection and restoration
+
+On 1,728 mixtures from three held-out speakers, event F1 was 0.084 for the original STFT detector, 0.154 after retuning STFT, and 0.475 for the short-context detector. The short-context detector matched 837 events and missed 891, with 960 unmatched predictions. Retuned STFT matched 336 and missed 1392, with 2302 unmatched predictions. On the uncorrupted inputs, short-context detection produced 14 false events and retuned STFT produced 33.
+
+| Detector | Precision | Recall | F1 | Sample recall | Clean false events |
+| --- | --- | --- | --- | --- | --- |
+| Energy (original threshold) | 0.066 | 0.203 | 0.100 | 0.103 | 70 |
+| STFT (original threshold) | 0.206 | 0.053 | 0.084 | 0.011 | 6 |
+| STFT (retuned) | 0.127 | 0.194 | 0.154 | 0.049 | 33 |
+| Short-context detector | 0.466 | 0.484 | 0.475 | 0.212 | 14 |
+
+| Condition | Original STFT hits | Retuned STFT hits | Short-context hits |
+| --- | --- | --- | --- |
+| -6 dB | 6/576 | 29/576 | 101/576 |
+| +0 dB | 10/576 | 61/576 | 326/576 |
+| +6 dB | 75/576 | 246/576 | 410/576 |
+| silence | 24/576 | 88/576 | 213/576 |
+| speech transient | 43/576 | 146/576 | 289/576 |
+| steady voiced | 24/576 | 102/576 | 335/576 |
+| Unseen real templates | 17/648 | 121/648 | 293/648 |
+
+A hit requires interval overlap. Sample recall measures how much of the true event was covered. The strength and location breakdown shows where the detector remains unreliable. Low-level insertions can have less short-window contrast than the surrounding speech. Similar local transients can occur naturally in speech, as the clean control below illustrates. Figure 6 illustrates a matched failure: in BWC arctic a0011, the detector missed the -6 dB keyboard insertion during steady speech but detected the +6 dB version at the same sample position. Even the hit covered only 289 of 381 inserted samples. The unseen-template row pools the three extra ESC-50 recordings, so it supports only a limited check of transfer to new disturbance examples.
+
+| Pipeline | Event reduction (dB) | Outside-event RMSE | SI-SDR (dB) | STOI | Median CPU RTF |
+| --- | --- | --- | --- | --- | --- |
+| Unprocessed | 0.00 | 0.000000 | 28.49 | 0.985 | 0.00000 |
+| STFT (original) | 0.13 | 0.000120 | 27.74 | 0.985 | 0.00081 |
+| STFT (retuned) | 0.37 | 0.000695 | 25.50 | 0.984 | 0.00080 |
+| Short-context repair | 0.89 | 0.000500 | 26.44 | 0.988 | 0.00091 |
+| GTCRN | 6.87 | 0.001684 | 23.00 | 0.974 | 0.00915 |
+
+GTCRN achieved 6.87 dB mean event-error reduction, while short-context interpolation achieved 0.89 dB. Their mean outside-event errors were 0.001684 and 0.000500, respectively. Each CPU timing excludes model setup and one warm-up. Clean-region RMSE quantifies waveform alteration. Perceptual quality would require a listening study.
+
+### 6.3 Manually annotated stops
+
+The clean control checks whether each detector touches unambiguous P, T or K intervals in the corpus's manually checked phones tier. The paired insertion test uses the first eligible token of each phone per utterance and places a 20 ms burst entirely inside the phone interval, near its strongest 2 ms first-difference-energy peak. Tests use three levels per selected token. The peak is an acoustic proxy for the release time. Human annotation identifies the phone interval.
+
+| Phone | Original hits | Original clean overlap | Retuned hits | Retuned clean overlap | Short-context hits | Short-context clean overlap |
+| --- | --- | --- | --- | --- | --- | --- |
+| /p/ | 5/36 | 0/28 | 13/36 | 1/28 | 27/36 | 0/28 |
+| /t/ | 0/54 | 0/32 | 3/54 | 5/32 | 37/54 | 2/32 |
+| /k/ | 1/42 | 3/37 | 12/42 | 8/37 | 30/42 | 1/37 |
+
+Clean overlap is counted per token, so one false event can touch more than one token. The targeted burst results measure detector sensitivity for a single synthetic disturbance shape and the annotated subset. The utterances repeat across strength variants, and the phoneme counts differ. The experiment does not support a population-level ranking of phonemes.
+
+### 6.4 Limits and conclusion
+
+The short-context detector improves event F1 over both STFT controls while still missing over half of the test events. Its clean false-event count falls between the two STFT controls, and GTCRN retains a substantial event-restoration advantage. The original OSR experiment established the restoration and preservation trade-off in one recording. The extension repeats that comparison on three unseen speakers and adds a threshold-only control and an annotated consonant test. The sampling of speakers, utterances and event sources remains small. Straight-line repair can remove real speech within the predicted intervals, and partial event coverage can leave interference audible. No formal listening test, streaming latency or peak-memory measurement is included.
 
 ## 7. Reproduction and implementation acknowledgement
 
-Run: python -m pip install -r requirements.txt; python scripts/prepare_data.py; python -m pytest -q; python scripts/run_experiment.py; python scripts/build_deliverables.py. The run creates manifest intervals, frozen thresholds, per-case detection/restoration results, no-op tests, figures and exact example arrays. scripts/export_case.py exports any controlled input; scripts/enhance.py processes a user-supplied WAV without reference labels. See README for platform-specific environment and website instructions.
+Use the README commands to set up dependencies and reproduce both benchmarks. Run scripts/prepare_extended_data.py and scripts/run_extended_experiment.py for the speaker-disjoint evaluation before rebuilding the deliverables. The run creates manifest intervals, frozen thresholds, per-case detection/restoration results, no-op tests, figures and exact example arrays. scripts/export_case.py exports any controlled input; scripts/enhance.py processes a user-supplied WAV without reference labels. See README for platform-specific environment and website instructions.
 
 AI assistance was used in code implementation and documentation. Reported measurements were produced by executing the accompanying experiment code, not taken from expected outcomes or substituted from published GTCRN benchmark numbers.
 
@@ -121,4 +172,5 @@ AI assistance was used in code implementation and documentation. Reported measur
 5. L. Zhou, H. Liu, L. Gan, Y. Zhou, M. Niedzwiecki and T.-K. Truong, "A novel sparse adaptive filter for suppressing impulsive disturbance in audio signals," Signal Processing, vol. 241, article 110390, April 2026. https://doi.org/10.1016/j.sigpro.2025.110390. Author code/data: https://github.com/minikatty/Lq_JSLMP
 6. K. J. Piczak, "ESC: Dataset for Environmental Sound Classification," ACM Multimedia, 2015. Dataset and attribution: https://github.com/karolpiczak/ESC-50
 7. C. H. Taal et al., "An Algorithm for Intelligibility Prediction of Time-Frequency Weighted Noisy Speech," IEEE TASLP, 2011. STOI implementation: https://github.com/mpariente/pystoi
+8. G. Zhao et al., "L2-ARCTIC: A Non-native English Speech Corpus," Interspeech 2018, pp. 2783–2787. https://doi.org/10.21437/Interspeech.2018-1110
 
