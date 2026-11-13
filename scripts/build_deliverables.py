@@ -59,7 +59,7 @@ Leona Wang | SID 540686380 | GitHub: zhi0708 | ELEC5305
 
 [GitHub code repository]({REPO})
 
-[GitHub Pages project website]({SITE}) | [Project demonstration video]({SITE}assets/demo.mp4)
+[GitHub Pages project website]({SITE})
 
 ## Abstract
 
@@ -184,7 +184,7 @@ AI assistance was used in code implementation and documentation. Reported measur
 
 ## Start here
 
-Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis and watch the [code demonstration]({SITE}assets/demo.mp4). Supporting modules and generated measurements are organised below; the notebook is the main entry point.
+Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis. Supporting modules and generated measurements are organised below; the notebook is the main entry point.
 
 ## Experiment
 
@@ -255,7 +255,7 @@ This writes clean.wav, noise.wav, noisy.wav, event_mask.npy and metadata.json. A
 ## Website and submission
 
 - Main notebook: [notebooks/impulsive_noise_project.ipynb](notebooks/impulsive_noise_project.ipynb). Use the same file across updates.
-- Listening examples and a short demonstration video are available on the project website.
+- Listening examples are available on the project website.
 - Website source: [docs/index.html](docs/index.html). Preview locally: `python -m http.server 8000 --directory docs`.
 - Intended public URL: {SITE}
 - [GitHub Actions workflow](.github/workflows/pages.yml) publishes `docs/` after an authorised push to main. In Settings → Pages, select **GitHub Actions** if needed. A deployment is only live after the workflow succeeds; verify the public URL before submitting.
@@ -331,7 +331,7 @@ def build_site(s,table,dt,cp,overlap,extended):
 <section id="extended"><h2>Evaluation on unseen speakers</h2><p>{extension.headline(extended)}</p><p>Two L2-ARCTIC speakers were used for development and three different speakers for testing. The test also includes three new ESC-50 event recordings. The retuned STFT comparison uses the same development data as the short-context detector.</p>{md_table_to_html(extension.detection_table(extended))}<h3>Restoration and computation</h3>{md_table_to_html(extension.quality_table(extended))}<h3>Annotated /p/, /t/ and /k/ intervals</h3>{md_table_to_html(extension.phone_table(extended))}<p>Clean overlap counts how often each detector touched a labelled phone with no injected event. Each corrupted token is tested at three levels.</p><figure><img loading="lazy" src="assets/figures/06_extended_miss.png" alt="Weak and strong versions of the same keyboard insertion"><figcaption>The -6 dB insertion is missed while the +6 dB version crosses the frozen threshold in the same voiced interval.</figcaption></figure></section>
 <section id="results"><h2>Original single-recording benchmark</h2><h3>Event detection</h3>{md_table_to_html(dt)}<p>The STFT detector improves precision, not recall. Event matching permits partial interval overlap; sample-level recall is only {s['detection']['stft']['sample_metrics']['recall']:.3f}, revealing incomplete event coverage.</p>{md_table_to_html(overlap)}<h3>Restoration and collateral alteration</h3>{md_table_to_html(table)}<p>Errors are averaged across the held-out grid. GTCRN's stronger local repair comes with changes outside the event and lower whole-file STOI than the original sparse-corruption input. This is a result for this recording and checkpoint, not a general verdict on neural enhancement.</p><h3>Already-clean input</h3>{md_table_to_html(cp)}<p>Twenty seconds of reference input are processed without inserted noise. The STFT detector has one false event; the energy baseline has 24. Numerically changing samples is not proof of audible degradation.</p><p>Runtime uses the same {html.escape(s['environment']['cpu'])} CPU; median RTF excludes model loading and warm-up. RTF below one indicates offline throughput, not causal latency. GTCRN has {s['model']['parameters']:,} parameters including fixed mappings ({s['model']['trainable_parameters']:,} trainable); parameter storage is {s['model']['parameter_bytes']:,} bytes. Process peak memory was not measured.</p></section>
 <section id="figures"><h2>Five questions, five result figures.</h2>{gallery}</section>
-<section id="listen"><h2>Hear the same event in different speech contexts.</h2><p>These examples move one identical event at a fixed absolute amplitude. They are separate from the local-RMS strength sweep. Playback files use a shared signal scale; analytical measurements use the original floating-point arrays.</p><div class="grid">{audio}</div><h3>Short project demonstration</h3><p><a href="assets/demo.mp4">Download the MP4 demonstration</a></p><video controls preload="metadata" src="assets/demo.mp4">Your browser does not support video. <a href="assets/demo.mp4">Download the demonstration</a>.</video><p>No formal listening experiment was performed. Examples are provided for informal inspection.</p></section>
+<section id="listen"><h2>Hear the same event in different speech contexts.</h2><p>These examples move one identical event at a fixed absolute amplitude. They are separate from the local-RMS strength sweep. Playback files use a shared signal scale; analytical measurements use the original floating-point arrays.</p><div class="grid">{audio}</div><p>No formal listening experiment was performed. Examples are provided for informal inspection.</p></section>
 <section id="limits"><h2>Limits that matter for interpreting these results.</h2><ul><li>The original 180 mixtures use one source recording. The extension adds three independent test speakers, with dependent mixture variants within each utterance.</li><li>Speech originally sampled at 8 kHz is upsampled for a general 16 kHz neural model. Domain mismatch may affect the comparison.</li><li>Speech is OSR_us_000_0010_8k.wav from Open Speech Repository, verified against a byte-identical public mirror; it is not certified noise-free.</li><li>The extension has two real recordings per event class in total, so broad event generalisation remains untested.</li><li>The original location proxies are complemented by a separate annotated phone analysis. Burst peak timing within each phone is estimated.</li><li>Conservative detection misses weak events; interpolation does not reconstruct complex voiced speech well.</li><li>No impulse-specific neural model, new model training, streaming implementation or measured peak-memory comparison.</li></ul><p>The supported conclusion is that local restoration, collateral alteration and computation should be measured separately for sparse corruption. The benchmark covers a small speaker sample and uses simple local interpolation.</p></section>
 <section id="reproduce"><h2>Run and inspect the complete experiment.</h2><pre>python -m pip install -r requirements.txt
 python scripts/prepare_data.py

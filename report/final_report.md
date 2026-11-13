@@ -4,7 +4,7 @@ Leona Wang | SID 540686380 | GitHub: zhi0708 | ELEC5305
 
 [GitHub code repository](https://github.com/zhi0708/elec5305-project--540686380-)
 
-[GitHub Pages project website](https://zhi0708.github.io/elec5305-project--540686380-/) | [Project demonstration video](https://zhi0708.github.io/elec5305-project--540686380-/assets/demo.mp4)
+[GitHub Pages project website](https://zhi0708.github.io/elec5305-project--540686380-/)
 
 ## Abstract
 

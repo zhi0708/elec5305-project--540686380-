@@ -6,7 +6,7 @@
 
 ## Start here
 
-Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis and watch the [code demonstration](https://zhi0708.github.io/elec5305-project--540686380-/assets/demo.mp4). Supporting modules and generated measurements are organised below; the notebook is the main entry point.
+Open [the main experiment notebook](notebooks/impulsive_noise_project.ipynb) for a guided, executable walkthrough. Read [the technical report](report/final_report.pdf) for the full analysis. Supporting modules and generated measurements are organised below; the notebook is the main entry point.
 
 ## Experiment
 
@@ -93,7 +93,7 @@ This writes clean.wav, noise.wav, noisy.wav, event_mask.npy and metadata.json. A
 ## Website and submission
 
 - Main notebook: [notebooks/impulsive_noise_project.ipynb](notebooks/impulsive_noise_project.ipynb). Use the same file across updates.
-- Listening examples and a short demonstration video are available on the project website.
+- Listening examples are available on the project website.
 - Website source: [docs/index.html](docs/index.html). Preview locally: `python -m http.server 8000 --directory docs`.
 - Intended public URL: https://zhi0708.github.io/elec5305-project--540686380-/
 - [GitHub Actions workflow](.github/workflows/pages.yml) publishes `docs/` after an authorised push to main. In Settings → Pages, select **GitHub Actions** if needed. A deployment is only live after the workflow succeeds; verify the public URL before submitting.
